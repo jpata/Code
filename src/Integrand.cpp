@@ -213,7 +213,7 @@ void MEM::Integrand::get_edges(double* lim, const std::vector<PSVar::PSVar>& los
   pair<double, double> phi_edges = {-TMath::Pi(),+TMath::Pi()};
 
   double y[2] = { obs_mets.at(0)->p4().Px(), obs_mets.at(0)->p4().Py()} ;
-
+  assert(obs_mets.at(0)->p4().Pt() > 0); 
   switch( fs ){
   case FinalState::LH:
     if( cfg.m_range_CL<1. )

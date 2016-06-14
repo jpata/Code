@@ -305,7 +305,7 @@ namespace MEM {
   };
   
   namespace Hypothesis {
-    enum Hypothesis { TTH=0, TTBB=1, Undefined=2 };
+    enum Hypothesis { TTH=0, TTBB=1, TTHg=2, TTBBg=3, Undefined=4 };
   }
 
   namespace PermConstants {

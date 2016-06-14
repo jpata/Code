@@ -15,3 +15,20 @@ ppttjj ttxbbbxbx 1 EW=0,0 QCD=4,1 CKMORDER=0 MODEL=sm Type=lt nc=3 nf=6 MU=0 MD=
 ppttjj ttxddxbbx 1 EW=0,0 QCD=4,1 CKMORDER=0 MODEL=sm Type=lt nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
 ppttjj uuxttxbbx map=ttxddxbbx[3,4,1,2,5,6]
 ppttjj ttxbbxgg 1 EW=0,0 QCD=4,1 CKMORDER=0 MODEL=sm Type=lt nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppttjj ttxdddxdxg 1 EW=0,0 QCD=5,0 CKMORDER=0 MODEL=sm Type=t nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppttjj ttxbbbxbxg condmap=ttxdddxdxg MB=0
+ppttjj uuuxuxttxg map=ttxdddxdxg[3,4,5,6,1,2,7]
+ppttjj uuxttxddxg 1 EW=0,0 QCD=5,0 CKMORDER=0 MODEL=sm Type=t nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppttjj ttxddxbbxg condmap=uuxttxddxg[3,4,1,2,5,6,7] MB=0
+ppttjj uuxttxbbxg condmap=uuxttxddxg MB=0
+ppttjj ttxddxssxg map=uuxttxddxg[3,4,1,2,5,6,7]
+ppttjj uuxccxttxg map=uuxttxddxg[1,2,5,6,3,4,7]
+ppttjj ccxttxddxg map=uuxttxddxg
+ppttjj ttxddxggg 1 EW=0,0 QCD=5,0 CKMORDER=0 MODEL=sm Type=t nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppttjj ttxbbxggg condmap=ttxddxggg MB=0
+ppttjj uuxttxggg map=ttxddxggg[3,4,1,2,5,6,7]
+ppttjj ttxggggg 1 EW=0,0 QCD=5,0 CKMORDER=0 MODEL=sm Type=t nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppttjj ttxbbbxbxg 1 EW=0,0 QCD=5,0 CKMORDER=0 MODEL=sm Type=t nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppttjj ttxddxbbxg 1 EW=0,0 QCD=5,0 CKMORDER=0 MODEL=sm Type=t nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppttjj uuxttxbbxg map=ttxddxbbxg[3,4,1,2,5,6,7]
+ppttjj ttxbbxggg 1 EW=0,0 QCD=5,0 CKMORDER=0 MODEL=sm Type=t nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0

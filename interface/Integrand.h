@@ -203,7 +203,7 @@ namespace MEM {
     int debug_code;
     
     // OpenLoops process ID-s
-    int proc_id0, proc_id1;
+    int proc_id0, proc_id1, proc_id2, proc_id3;
 
     // main configurator
     MEMConfig cfg;

@@ -36,7 +36,7 @@ btag_pdfs(config.btag_pdfs) {
     string("/lib/") +
     scram_arch
   );
-
+  std::cout << "initializing openloops with install_path=" << install_path << std::endl;
   ol_setparameter_string(
     "install_path",
     install_path.c_str() 
@@ -50,10 +50,15 @@ btag_pdfs(config.btag_pdfs) {
   //ttH
   ol_setparameter_int("order_ew", 1);
   proc_id0 = ol_register_process("21 21 -> 25 6 -6", 1);
+  int proc_id2 = ol_register_process("21 21 -> 25 6 -6 21", 1);
 
   //ttbb
   ol_setparameter_int("order_ew", 0);
   proc_id1 = ol_register_process("21 21 -> 6 -6 5 -5", 1);
+  int proc_id3 = ol_register_process("21 21 -> 6 -6 5 -5 21", 1);
+  
+  cout << proc_id2 << endl;
+  cout << proc_id3 << endl;
 
   if( debug_code&DebugVerbosity::init )  
     cout << "Integrand::Integrand(): START" << endl;
@@ -2946,22 +2951,26 @@ double MEM::Integrand::transfer(const PS& ps, const vector<int>& perm, int& acce
 }
 
 
-double MEM::Integrand::scattering(const TLorentzVector& top, const TLorentzVector& atop, const TLorentzVector& b1, const TLorentzVector& b2,
-				  double& x1, double& x2) const{
+double MEM::Integrand::scattering(
+    const TLorentzVector& top, const TLorentzVector& atop,
+    const TLorentzVector& b1, const TLorentzVector& b2,
+    const TLorentzVector& gluon,
+    double& x1, double& x2) const{
 
   // return value (address passed to OpenLoops)
   double M2{1.};  
 
   // temporary objects
-  TLorentzVector t, tx, b, bx, h, sum;
+  TLorentzVector t, tx, b, bx, gf, h, sum;
   t.SetPtEtaPhiM ( top.Pt(),     top.Eta(),     top.Phi(),    MTOP);
   tx.SetPtEtaPhiM( atop.Pt(),    atop.Eta(),    atop.Phi(),   MTOP);
   b.SetPtEtaPhiM ( b1.Pt(),      b1.Eta(),      b1.Phi(),       0.);
   bx.SetPtEtaPhiM( b2.Pt(),      b2.Eta(),      b2.Phi(),       0.);
+  gf.SetPtEtaPhiM( gluon.Pt(),   gluon.Eta(),   gluon.Phi(),    0.);
   h.SetPtEtaPhiM ( (b1+b2).Pt(), (b1+b2).Eta(), (b1+b2).Phi(),  MH);
 
   // the total sum (needed to get the boost factor);
-  TLorentzVector vSum = hypo==Hypothesis::TTH ? t+tx+h : t+tx+b+bx;
+  TLorentzVector vSum = hypo==Hypothesis::TTH ? t+tx+h+gf : t+tx+b+bx+gf;
 
   if(vSum.E()>cfg.sqrts){
     x1 = .99;
@@ -2984,7 +2993,8 @@ double MEM::Integrand::scattering(const TLorentzVector& top, const TLorentzVecto
 #endif
   }
 
-  if(hypo==Hypothesis::TTH){
+  switch(hypo){
+  case Hypothesis::TTH:
     h.Boost  ( -boostPt );
     // fix for rounding
     double hPx = -(t.Px() + tx.Px());
@@ -2998,8 +3008,8 @@ double MEM::Integrand::scattering(const TLorentzVector& top, const TLorentzVecto
 #endif
     h.SetPxPyPzE( hPx, hPy, hPz, sqrt(hPx*hPx + hPy*hPy + hPz*hPz + MH*MH) );    
     sum = t+tx+h;
-  }
-  else{
+    break; 
+  case Hypothesis::TTBB:
     b.Boost  ( -boostPt );
     bx.Boost ( -boostPt );
     // fix for rounding
@@ -3014,6 +3024,7 @@ double MEM::Integrand::scattering(const TLorentzVector& top, const TLorentzVecto
 #endif
     b.SetPxPyPzE( bPx, bPy, bPz, sqrt(bPx*bPx + bPy*bPy + bPz*bPz ) );
     sum =  t+tx+b+bx;
+    break;
   }
   
   // update x1 and x2
@@ -3023,38 +3034,60 @@ double MEM::Integrand::scattering(const TLorentzVector& top, const TLorentzVecto
   x2 = (-Pz + E)/cfg.sqrts;
   if( !(cfg.int_code&IntegrandType::ScattAmpl) ) return M2;
 
-  // create gluon p4s
+  // create initial state gluon p4s
   TLorentzVector g1 = TLorentzVector(0.,0.,  (E+Pz)/2., (E+Pz)/2.);
   TLorentzVector g2 = TLorentzVector(0.,0., -(E-Pz)/2., (E-Pz)/2.);
-
-  // needed to interface with OpenLoops
-  double ccP_0[25] = {
-    g1.E(), g1.Px(), g1.Py(), g1.Pz(), g1.M(),
-    g2.E(), g2.Px(), g2.Py(), g2.Pz(), g2.M(),
-    h.E(),  h.Px(),  h.Py(),  h.Pz(), h.M(),
-    t.E(),  t.Px(),  t.Py(),  t.Pz(), t.M(),
-    tx.E(), tx.Px(), tx.Py(), tx.Pz(), tx.M()
-  };
-
-  double ccP_1[30] = {
-    g1.E(), g1.Px(), g1.Py(), g1.Pz(), g1.M(),
-    g2.E(), g2.Px(), g2.Py(), g2.Pz(), g2.M(),
-    t.E(),  t.Px(),  t.Py(),  t.Pz(), t.M(),
-    tx.E(), tx.Px(), tx.Py(), tx.Pz(), tx.M(),
-    b.E(),  b.Px(),  b.Py(),  b.Pz(), b.M(),
-    bx.E(), bx.Px(), bx.Py(), bx.Pz(), bx.M(),
-  };
 
   // call OpenLoops functions
   switch(hypo){
   case Hypothesis::TTH:
-    //pphttxcallme2born_  (const_cast<double*>(&M2), ccP_0, const_cast<double*>(&MTOP), const_cast<double*>(&MH));
-    ol_evaluate_tree(proc_id0, ccP_0, &M2);
+    // ttH
+    double ccP[25] = {
+      g1.E(), g1.Px(), g1.Py(), g1.Pz(), g1.M(),
+      g2.E(), g2.Px(), g2.Py(), g2.Pz(), g2.M(),
+      h.E(),  h.Px(),  h.Py(),  h.Pz(), h.M(),
+      t.E(),  t.Px(),  t.Py(),  t.Pz(), t.M(),
+      tx.E(), tx.Px(), tx.Py(), tx.Pz(), tx.M()
+    };
+
+    ol_evaluate_tree(proc_id0, ccP, &M2);
     break; 
   case Hypothesis::TTBB:
-    //ppttxbbxcallme2born_(const_cast<double*>(&M2), ccP_1, const_cast<double*>(&MTOP), const_cast<double*>(&MH));
-    ol_evaluate_tree(proc_id1, ccP_1, &M2);
+    // ttbb
+    double ccP[30] = {
+      g1.E(), g1.Px(), g1.Py(), g1.Pz(), g1.M(),
+      g2.E(), g2.Px(), g2.Py(), g2.Pz(), g2.M(),
+      t.E(),  t.Px(),  t.Py(),  t.Pz(), t.M(),
+      tx.E(), tx.Px(), tx.Py(), tx.Pz(), tx.M(),
+      b.E(),  b.Px(),  b.Py(),  b.Pz(), b.M(),
+      bx.E(), bx.Px(), bx.Py(), bx.Pz(), bx.M(),
+    };
+    ol_evaluate_tree(proc_id1, ccP, &M2);
     break;
+  case Hypothesis::TTHg:
+    // ttH
+    double ccP[25] = {
+      g1.E(), g1.Px(), g1.Py(), g1.Pz(), g1.M(),
+      g2.E(), g2.Px(), g2.Py(), g2.Pz(), g2.M(),
+      h.E(),  h.Px(),  h.Py(),  h.Pz(), h.M(),
+      t.E(),  t.Px(),  t.Py(),  t.Pz(), t.M(),
+      tx.E(), tx.Px(), tx.Py(), tx.Pz(), tx.M(),
+      gf.E(), gf.Px(), gf.Py(), gf.Pz(), gf.M()
+    };
+    ol_evaluate_tree(proc_id2, ccP, &M2);
+    break; 
+  case Hypothesis::TTBBg:
+    double ccP[30] = {
+      g1.E(), g1.Px(), g1.Py(), g1.Pz(), g1.M(),
+      g2.E(), g2.Px(), g2.Py(), g2.Pz(), g2.M(),
+      t.E(),  t.Px(),  t.Py(),  t.Pz(), t.M(),
+      tx.E(), tx.Px(), tx.Py(), tx.Pz(), tx.M(),
+      b.E(),  b.Px(),  b.Py(),  b.Pz(), b.M(),
+      bx.E(), bx.Px(), bx.Py(), bx.Pz(), bx.M(),
+      gf.E(), gf.Px(), gf.Py(), gf.Pz(), gf.M()
+    };
+    ol_evaluate_tree(proc_id3, ccP, &M2);
+    break; 
   default:
     break;
   }

@@ -36,7 +36,7 @@ namespace MEM {
         double calcProbability(
             MEM::JetInterpretation::JetInterpretation hypo1,
             MEM::JetInterpretation::JetInterpretation hypo2,
-            unsigned int nhypo1,
+            unsigned long nhypo1,
             std::vector<unsigned int>& outBestPerm
         );
         void push_back_object( const JetProbability& jp ) {

@@ -8,6 +8,8 @@ import math
 cfg = ROOT.MEM.MEMConfig()
 cfg.defaultCfg()
 cfg.transfer_function_method = MEM.TFMethod.Builtin
+#cfg.int_code = sum([getattr(MEM.IntegrandType, x) for x in ["Jacobian", "Transfer", "ScattAmpl", "DecayAmpl"]])
+#mem = MEM.Integrand(MEM.output+MEM.input+MEM.init+MEM.init_more+MEM.integration, cfg)
 mem = MEM.Integrand(MEM.output, cfg)
 print mem
 
@@ -36,36 +38,40 @@ def add_obj(mem, typ, **kwargs):
         o.addObs(k, v)
     mem.push_back_object(o)
 
+t1 = None
+# t1 = ROOT.TF1("fb","[0]*exp(-0.5*((x-[1])/[2])**2)",0,500)
+# t1.SetParameter(0, 1.0 / 100/math.sqrt(2*3.1415)) #normalization
+# t1.SetParameter(1, 100) #mean
+# t1.SetParameter(2, math.sqrt(2)*100) #unc
+
 # add_obj(mem,
 #     MEM.ObjectType.Jet, p4c=(50, 0, 10, math.sqrt(50*50+10*10)),
-#     obsdict={MEM.Observable.BTAG: 0.0}
+#     obsdict={MEM.Observable.BTAG: 0.0}, tf=t1
+# )
+# add_obj(mem,
+#     MEM.ObjectType.Jet, p4c=(30, 30, 40, math.sqrt(30*30+30*30+40*40)),
+#     obsdict={MEM.Observable.BTAG: 0.0}, tf=t1
 # )
 
-t1 = ROOT.TF1("fb","[0]*exp(-0.5*((x-[1])/[2])**2)",0,500)
-t1.SetParameter(0, 1.0 / 100/math.sqrt(2*3.1415)) #normalization
-t1.SetParameter(1, 100) #mean
-t1.SetParameter(2, math.sqrt(2)*100) #unc
 
 add_obj(mem,
     MEM.ObjectType.Jet, p4c=(0, 50, 20, math.sqrt(50*50+20*20)),
     obsdict={MEM.Observable.BTAG: 1.0}, tf=t1
 )
-# add_obj(mem,
-#     MEM.ObjectType.Jet, p4c=(30, 30, 40, math.sqrt(30*30+30*30+40*40)),
-#     obsdict={MEM.Observable.BTAG: 1.0}
-# )
+
 add_obj(mem,
     MEM.ObjectType.Jet, p4c=(70, 20, 10, math.sqrt(70*70+20*20+10*10)),
-    obsdict={MEM.Observable.BTAG: 1.0}
+    obsdict={MEM.Observable.BTAG: 1.0}, tf=t1
 )
 add_obj(mem,
     MEM.ObjectType.Jet, p4c=(20, 50, 10, math.sqrt(20*20+50*50+10*10)),
-    obsdict={MEM.Observable.BTAG: 1.0}
+    obsdict={MEM.Observable.BTAG: 1.0}, tf=t1
 )
 add_obj(mem,
     MEM.ObjectType.Jet, p4c=(100, 10, 20, math.sqrt(100*100 + 10*10 + 20*20)),
-    obsdict={MEM.Observable.BTAG: 1.0}
+    obsdict={MEM.Observable.BTAG: 1.0}, tf=t1
 )
+
 add_obj(mem,
     MEM.ObjectType.Lepton, p4c=(70, 10, 20, math.sqrt(70*70+20*20+10*10)),
     obsdict={MEM.Observable.CHARGE: 1.0}
@@ -84,12 +90,11 @@ pvec.push_back(MEM.Permutations.BTagged)
 pvec.push_back(MEM.Permutations.QUntagged)
 cfg.perm_pruning = pvec
 
-
 CvectorPSVar = getattr(ROOT, "std::vector<MEM::PSVar::PSVar>")
 vars_to_integrate   = CvectorPSVar()
 vars_to_marginalize = CvectorPSVar()
-r = mem.run(MEM.FinalState.LL, MEM.Hypothesis.TTH, vars_to_integrate, vars_to_marginalize)
+r = mem.run(MEM.FinalState.LL, MEM.Hypothesis.TTH, vars_to_integrate, vars_to_marginalize, 1000)
 print "tth", r.p
-r = mem.run(MEM.FinalState.LL, MEM.Hypothesis.TTBB, vars_to_integrate, vars_to_marginalize)
+r = mem.run(MEM.FinalState.LL, MEM.Hypothesis.TTBB, vars_to_integrate, vars_to_marginalize, 1000)
 print "ttbb", r.p
 mem.next_event()

@@ -103,7 +103,7 @@ namespace MEM {
     int n_c;
     int n_l;
     int tag_id;
-    unsigned long seed;
+    unsigned int seed;
     string tag_name;
     vector<double> input_btag; 
     vector<double> rnd_btag; 

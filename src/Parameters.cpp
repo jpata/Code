@@ -511,18 +511,19 @@ void MEM::PS::set(const MEM::PSPart::PSPart& a, const MEM::GenPart& b){
 }
 
 void MEM::PS::print(ostream& os) const{
-  cout << "\tContent of this PS: dim(PS)=" << dim << "..." << endl;
-  for( auto p = val.begin() ; p != val.end() ; ++p ){
-    cout << "\t\tPS[" << static_cast<size_t>(p->first) << "] : type("
+  os << "Content of this PS: dim(PS)=" << dim << "..." << endl;
+  for( auto p = val.begin() ; p != val.end() ; ++p ) {
+    const auto vec = p->second.lv;
+    os << "\tPS[" << static_cast<size_t>(p->first) << "] : type("
 	 << static_cast<size_t>(p->second.type) << "), (pT,h,phi,M)=("
-	 << p->second.lv.Pt() << ", "
-	 << p->second.lv.Eta() << ", "
-	 << p->second.lv.Phi() << ", "
-	 << p->second.lv.M() << "), (px,py,pz,E)=("
-	 << p->second.lv.Px() << ", "
-	 << p->second.lv.Py() << ", "
-	 << p->second.lv.Pz() << ", "
-	 << p->second.lv.E() << ")"
+	 << vec.Pt() << ", "
+	 << vec.Eta() << ", "
+	 << vec.Phi() << ", "
+	 << vec.M() << "), (px,py,pz,E)=("
+	 << vec.Px() << ", "
+	 << vec.Py() << ", "
+	 << vec.Pz() << ", "
+	 << vec.E() << ")"
 	 << endl; 
   }
 }
@@ -588,7 +589,6 @@ void MEM::Object::print(ostream& os) const {
   for (auto& kv : transfer_funcs) {
     os << " tf " << kv.first << "->" << ((TF1*)kv.second);
   }
-    os << endl;
 }
 
 MEM::MEMConfig::MEMConfig(int nmc, 

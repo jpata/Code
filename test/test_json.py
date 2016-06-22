@@ -82,9 +82,6 @@ for cfg in confs:
                 obsdict={MEM.Observable.BTAG: btag},
                 #tf=t1
             )
-            if njet >= 8:
-                print "stopping after {0} jets".format(njet)
-                break
 
         if njet <= 6:
             print "skipping event"
@@ -109,12 +106,13 @@ for cfg in confs:
         if jsev["output"]["mem_cfg"] == "SL_2w2h2t":
             r1 = mem.run(MEM.FinalState.LH, MEM.Hypothesis.TTH, vars_to_integrate, vars_to_marginalize, 1000)
             r2 = mem.run(MEM.FinalState.LH, MEM.Hypothesis.TTBB, vars_to_integrate, vars_to_marginalize, 1000)
-            print "{0} ev={1} tth={2} ttbb={3} val={4}".format(
-                cfg.name,
-                jsev["event"]["event"],
-                r1.p,
-                r2.p,
-                r1.p/(r1.p + 0.1*r2.p)
-            )
+            d = {
+                "name": cfg.name,
+                "event":jsev["event"]["event"],
+                "tth": r1.p,
+                "ttbb": r2.p,
+                "p": r1.p/(r1.p + 0.1*r2.p) if (r1.p>0 and r2.p>0) else 0.0 
+            }
+            print "RET", json.dumps(d)
         mem.next_event()
     del mem

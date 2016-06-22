@@ -86,6 +86,9 @@ for cfg in confs:
                 print "stopping after {0} jets".format(njet)
                 break
 
+        if njet <= 6:
+            print "skipping event"
+            continue
         leps_p4 = jsev["input"]["selectedLeptonsP4"]
         leps_charge = jsev["input"]["selectedLeptonsCharge"]
         for p4, charge in zip(leps_p4, leps_charge):

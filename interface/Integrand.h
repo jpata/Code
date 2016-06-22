@@ -62,7 +62,7 @@ class Integrand {
   //  void set_ncalls(const std::size_t &);
   //
   //  // set main cfg
-  //  void set_cfg(const MEMConfig &);
+  void set_cfg(const MEMConfig &);
 
   // add object information
   // WARNING: to be called just after push_back of related object!

@@ -83,7 +83,7 @@ for cfg in confs:
                 #tf=t1
             )
 
-        if njet <= 6:
+        if njet != 7:
             print "skipping event"
             continue
         leps_p4 = jsev["input"]["selectedLeptonsP4"]
@@ -104,13 +104,18 @@ for cfg in confs:
         vars_to_integrate   = CvectorPSVar()
         vars_to_marginalize = CvectorPSVar()
         if jsev["output"]["mem_cfg"] == "SL_2w2h2t":
-            r1 = mem.run(MEM.FinalState.LH, MEM.Hypothesis.TTH, vars_to_integrate, vars_to_marginalize, 1000)
-            r2 = mem.run(MEM.FinalState.LH, MEM.Hypothesis.TTBB, vars_to_integrate, vars_to_marginalize, 1000)
+            r1 = mem.run(MEM.FinalState.LH, MEM.Hypothesis.TTH, vars_to_integrate, vars_to_marginalize, 5000)
+            r2 = mem.run(MEM.FinalState.LH, MEM.Hypothesis.TTBB, vars_to_integrate, vars_to_marginalize, 5000)
             d = {
                 "name": cfg.name,
                 "event":jsev["event"]["event"],
+                "numJets": njet,
                 "tth": r1.p,
                 "ttbb": r2.p,
+                "tth_err": r1.p_err,
+                "ttbb_err": r2.p_err,
+                "tth_time": r1.time/1000.0, 
+                "ttbb_time": r1.time/1000.0, 
                 "p": r1.p/(r1.p + 0.1*r2.p) if (r1.p>0 and r2.p>0) else 0.0 
             }
             print "RET", json.dumps(d)

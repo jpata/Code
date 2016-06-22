@@ -571,8 +571,9 @@ void MEM::Integrand::add_object_observable(
 //}
 //
 // void MEM::Integrand::set_sqrts(const double &s) { cfg.sqrts = s; }
-//
-// void MEM::Integrand::set_cfg(const MEMConfig &config) { cfg = config; }
+
+//FIXME: verify that this is safe
+void MEM::Integrand::set_cfg(const MEMConfig &config) { cfg = config; }
 
 //// void MEM::Integrand::set_permutation_strategy(const
 //// std::vector<MEM::Permutations>& str){

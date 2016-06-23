@@ -326,7 +326,7 @@ pair<double, double> MEM::get_support(
   ){
 
   if( type==TFType::TFType::MET ){
-    if( debug&DebugVerbosity::init_more) cout << "get_support" << y[0] << " " << y[1] << " " << alpha << " " << debug << " " << obj << endl;
+    if( debug&DebugVerbosity::init_more) cout << "get_support " << y[0] << " " << y[1] << " " << alpha << " " << debug << " " << obj << endl;
 
     double alpha_n = TMath::Abs(alpha);
     int sign       = alpha>0?1:0;

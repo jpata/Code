@@ -1,7 +1,12 @@
 #ifndef PARAMETERS_H
 #define PARAMETERS_H
 
-#define DEBUG_MODE
+//#define DEBUG_MODE
+
+//needed for easylogging
+#ifndef DEBUG_MODE
+#define NDEBUG
+#endif
 
 // std library
 #include <assert.h>
@@ -35,9 +40,6 @@
 #include "TRandom3.h"
 #include "TVector3.h"
 
-//Keep this uncommented to DISABLE debugging
-//comment it to ENABLE debugging
-//#define NDEBUG
 #include "TTH/MEIntegratorStandalone/interface/easylogging++.h"
 
 typedef TLorentzVector LV;
@@ -523,7 +525,8 @@ struct MEMConfig {
       int = 0,         // do minimisation instead of integration
       int = 0,         // do runtime pruning of permutations
       double = 1e-03,  // pruning accuracy
-      int = 0          // prefit
+      int = 0,          // prefit
+      int max_permutations = 500
       );
 
   void defaultCfg(float nCallsMultiplier = 1.0);
@@ -600,6 +603,9 @@ struct MEMConfig {
   // do a pre-fit to filter permutations
   int do_prefit;
 
+  //maximum number of permutations to consider
+  int max_permutations;
+
   std::map<std::pair<TFType::TFType, int>, TF1*> tf_map;
 
   std::map<DistributionType::DistributionType, TH3D*> btag_pdfs;
@@ -615,7 +621,6 @@ struct MEMOutput {
   int num_calls;
   float efficiency;
   int prefit_code;
-  double btag_weights[3];
   std::size_t num_perm;
   std::size_t assumption;
   FinalState::FinalState final_state;
@@ -640,9 +645,6 @@ struct MEMOutput {
     os << "\tPhase-space efficiency  = " << efficiency * 100 << "%" << endl;
     os << "\tError code              = " << error_code << endl;
     os << "\tPre-fit code            = " << prefit_code << endl;
-    os << "\tB-tag weights           = "
-       << "(" << btag_weights[0] << ", " << btag_weights[1] << ", "
-       << btag_weights[2] << ")" << endl;
     os << "\tJob done in..............." << time * 0.001 << " seconds" << endl;
     os << "\t********************************************" << endl;
     os.precision(8);

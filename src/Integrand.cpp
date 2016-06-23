@@ -57,12 +57,11 @@ MEM::Integrand::Integrand(int debug, const MEMConfig &config)
   this_perm = 0;
   n_perm_max = 0;
   prefit_code = 0;
-  for (size_t b = 0; b < 3; ++b) btag_weights[b] = 0.;
   comparator = CompPerm();
 
   // init PDF set
   const char *pdfstr = cfg.pdfset.c_str();
-  cout << pdfstr << endl;
+  LOG(INFO) << pdfstr << endl;
   LHAPDF::initPDFSet(0, pdfstr);
 
   const string cmssw_path(std::getenv("CMSSW_BASE"));
@@ -92,10 +91,23 @@ MEM::Integrand::Integrand(int debug, const MEMConfig &config)
 
   el::Configurations defaultConf;
   defaultConf.setToDefault();
-  // Values are always std::string
   defaultConf.set(el::Level::Info, el::ConfigurationType::Format,
                   "%datetime %level %msg");
   el::Loggers::reconfigureLogger("default", defaultConf);
+  int verbose_level = 0;
+  if (debug & DebugVerbosity::init) {
+    verbose_level = 1;
+  }
+  if (debug & DebugVerbosity::init_more) {
+    verbose_level = 2;
+  }
+  if (debug & DebugVerbosity::event) {
+    verbose_level = 3;
+  }
+  if (debug & DebugVerbosity::integration) {
+    verbose_level = 4;
+  }
+  el::Loggers::setVerboseLevel(verbose_level);
 }
 
 MEM::Integrand::~Integrand() {
@@ -213,10 +225,7 @@ void MEM::Integrand::init(const MEM::FinalState::FinalState f,
   } while (next_permutation(perm_index_copy.begin(), perm_index_copy.end(),
                             comparator));
 
-  if (debug_code & DebugVerbosity::init) {
-    cout << "\tMaximum of " << n_perm_max << " permutation(s) considered"
-         << endl;
-  }
+  DVLOG(1) << "\tMaximum of " << n_perm_max << " permutation(s) considered";
 
   // Formula to get the number of unknowns
   // The number of variables is equal to npar - 2*extra_jets
@@ -249,15 +258,10 @@ void MEM::Integrand::init(const MEM::FinalState::FinalState f,
       // MET Px/Py
       - 2 * (obs_mets.size() == 0);
 
-  if (debug_code & DebugVerbosity::init) {
-    cout << "\tTotal of " << num_of_vars
-         << " unknowns (does not take into account lost jets)" << endl;
-    cout << "\tIntegration code: " << cfg.int_code << endl;
-  }
+    DVLOG(1) << "Total of " << num_of_vars
+         << " unknowns (does not take into account lost jets)";
+    DVLOG(1) << "Integration code: " << cfg.int_code;
 
-  if (debug_code & DebugVerbosity::init) {
-    cout << "Integrand::init(): END" << endl;
-  }
   return;
 }
 
@@ -266,10 +270,12 @@ vector<int> MEM::Integrand::get_permutation(const std::size_t &n) {
   std::size_t n_perm{0};
   do {
     if (n == n_perm) {
-      if (debug_code & DebugVerbosity::init_more) {
-        cout << "\tperm. " << n_perm << ": [ ";
-        for (auto ind : perm_index_copy) cout << ind << " ";
-        cout << "]" << endl;
+      if (VLOG_IS_ON(3)) {
+        ostringstream os;
+        for (auto ind : perm_index_copy) {
+            os << ind << " ";
+        }
+        DVLOG(3) << "\tperm. " << n_perm << ": [ " << os.str() << " ]";
       }
       return perm_index_copy;
     }
@@ -365,11 +371,11 @@ void MEM::Integrand::get_edges(double *lim,
       break;
   }
 
-  if (debug_code & DebugVerbosity::init) {
-    cout << "\tIntegrand::get_edges(): SUMMARY" << endl;
-    cout << (edge ? "\t\tH" : "\t\tL") << " edges: [ ";
-    for (size_t i = 0; i < nvar; ++i) cout << lim[i] << " ";
-    cout << "]" << endl;
+  if (VLOG_IS_ON(2)) {
+    DVLOG(2) << "\tIntegrand::get_edges(): SUMMARY" << endl;
+    ostringstream os;
+    for (size_t i = 0; i < nvar; ++i) os << lim[i] << " ";
+    DVLOG(2) << (edge ? "\t\tH" : "\t\tL") << " edges: [ " << os.str() << "]";
   }
 }
 
@@ -530,7 +536,7 @@ void MEM::Integrand::push_back_object(MEM::Object *obj) {
       break;
   }
 
-#ifndef NDEBUG
+#ifdef DEBUG_MODE
   ostringstream os;
   obj->print(os);
   LOG(DEBUG) << "Integrand::fill_map(): SUMMARY" << os.str();
@@ -650,10 +656,11 @@ MEM::MEMOutput MEM::Integrand::run(const MEM::FinalState::FinalState f,
   out.prefit_code = prefit_code;
   LOG(DEBUG) << "Integration took " << (double)out.time / (double)n_calls
              << " ms/point";
-  for (size_t b = 0; b < 3; ++b) out.btag_weights[b] = btag_weights[b];
 
   if (debug_code & DebugVerbosity::output) {
-    out.print(cout);
+    ostringstream os;
+    out.print(os);
+    LOG(INFO) << endl << os.str();
   }
 
   DVLOG(1) << "Integrand::run(): DONE in "
@@ -682,7 +689,6 @@ void MEM::Integrand::next_event() {
   // cfg.is_default = true;
   n_perm_max = 0;
   prefit_code = 0;
-  for (size_t b = 0; b < 3; ++b) btag_weights[b] = 0.;
   perm_index.clear();
   for (auto p : perm_indexes_assumption) p.clear();
   perm_indexes_assumption.clear();
@@ -725,7 +731,6 @@ void MEM::Integrand::next_hypo() {
   n_skip = 0;
   n_perm_max = 0;
   prefit_code = 0;
-  for (size_t b = 0; b < 3; ++b) btag_weights[b] = 0.;
   // cfg.is_default = true;
   if (debug_code & DebugVerbosity::init) {
     cout << "Integrand::next_hypo(): END" << endl;
@@ -789,11 +794,11 @@ void MEM::Integrand::make_assumption(
   //    CASE (1) ==> perm contains already -1: then -1 must be aligned with the
   //    lost quark
   //    CASE (2) ==> perm does not contain -1: then set the correct index to -1
-  LOG(DEBUG) << "filtering permutations";
+  LOG(DEBUG) << "filtering permutations with cfg.perm_pruning=" << vec_to_string(cfg.perm_pruning);
   for (std::size_t n_perm = 0; n_perm < n_perm_max; ++n_perm) {
     auto perm = get_permutation(n_perm);
     if (perm.size() == 0) continue;
-    VLOG_EVERY_N(1000, 1) << "considering permutation " << vec_to_string(perm);
+    DVLOG(3) << "considering permutation " << vec_to_string(perm);
 
     // - *it gives the integ. var. position in PSVar
     // - provide first cosTheta: then *it-1 gives the position of E
@@ -835,6 +840,25 @@ void MEM::Integrand::make_assumption(
   DVLOG(1) << perms_to_string(perm_indexes_assumption, perm_const_assumption);
   LOG(INFO) << "A total of " << perm_indexes_assumption.size()
             << " permutations have been considered for this assumption";
+  if (cfg.max_permutations>0 && perm_indexes_assumption.size() > (unsigned int)cfg.max_permutations) {
+    LOG(ERROR) << "Too many permutations, bailing out";
+    for (auto & obj : obs_jets) {
+      ostringstream os;
+      obj->print(os);
+      LOG(DEBUG) << "jet " << os.str();
+    }
+    for (auto & obj : obs_leptons) {
+      ostringstream os;
+      obj->print(os);
+      LOG(DEBUG) << "lep " << os.str();
+    }
+    for (auto & obj : obs_mets) {
+      ostringstream os;
+      obj->print(os);
+      LOG(DEBUG) << "met " << os.str();
+    }
+    throw std::runtime_error("too many permutations");
+  }
 
   // create integration ranges
   unsigned int npar = static_cast<unsigned int>(num_of_vars + lost.size());
@@ -1791,22 +1815,24 @@ void MEM::Integrand::extend_PS(MEM::PS &ps, const MEM::PSPart::PSPart &part,
   ps.set(part, MEM::GenPart(TLorentzVector(dir * P, E_phys), type, charge));
 
 #ifdef DEBUG_MODE
-  if (debug_code & DebugVerbosity::integration) {
-    cout << "\t\tExtend phase-space point: adding variable "
-         << static_cast<size_t>(part) << endl;
-    if (map_to_var.find(var_E) != map_to_var.end())
-      cout << "\t\tE   = x[" << map_to_var.find(var_E)->second << "] = " << E
-           << " GeV" << endl;
-    else
-      cout << "\t\tE   = SOLVE() = " << E << " GeV" << endl;
+  if (VLOG_IS_ON(3)) {
+    DVLOG(3) << "\t\tExtend phase-space point: adding variable "
+         << static_cast<size_t>(part);
+    if (map_to_var.find(var_E) != map_to_var.end()) {
+      DVLOG(3) << "\t\tE   = x[" << map_to_var.find(var_E)->second << "] = " << E
+           << " GeV";
+    }
+    else {
+      DVLOG(3) << "\t\tE   = SOLVE() = " << E << " GeV";
+    }
     if (map_to_var.find(var_cos) != map_to_var.end() &&
         map_to_var.find(var_phi) != map_to_var.end()) {
-      cout << "\t\tcos = x[" << map_to_var.find(var_cos)->second
-           << "] = " << TMath::Cos(dir.Theta()) << endl;
-      cout << "\t\tphi = x[" << map_to_var.find(var_phi)->second
-           << "] = " << dir.Phi() << endl;
+      DVLOG(3) << "\t\tcos = x[" << map_to_var.find(var_cos)->second
+           << "] = " << TMath::Cos(dir.Theta());
+      DVLOG(3) << "\t\tphi = x[" << map_to_var.find(var_phi)->second
+           << "] = " << dir.Phi();
     } else {
-      cout << "\t\tUsing obs[" << pos << "]" << endl;
+      DVLOG(3) << "\t\tUsing obs[" << pos << "]";
     }
   }
 #endif
@@ -1825,8 +1851,8 @@ void MEM::Integrand::extend_PS_nodebug(MEM::PS &ps,
 int MEM::Integrand::create_PS_LL(MEM::PS &ps, const double *x,
                                  const vector<int> &perm) const {
 #ifdef DEBUG_MODE
-  if (debug_code & DebugVerbosity::integration) {
-    cout << "\tIntegrand::create_PS_LL(): START" << endl;
+  if (VLOG_IS_ON(3)) {
+    DVLOG(3) << "\tIntegrand::create_PS_LL(): START";
   }
 #endif
 
@@ -1962,22 +1988,12 @@ int MEM::Integrand::create_PS_LL(MEM::PS &ps, const double *x,
     }
   }
 
-#ifdef DEBUG_MODE
-  if (debug_code & DebugVerbosity::integration) {
-    cout << "\tIntegrand::create_PS_LHL(): END" << endl;
-  }
-#endif
 
   return accept;
 }
 
 int MEM::Integrand::create_PS_HH(MEM::PS &ps, const double *x,
                                  const vector<int> &perm) const {
-#ifdef DEBUG_MODE
-  if (debug_code & DebugVerbosity::integration) {
-    cout << "\tIntegrand::create_PS_HH(): START" << endl;
-  }
-#endif
 
   // corrupted phase space
   int accept{0};
@@ -2196,7 +2212,7 @@ double MEM::Integrand::probability(const double *x,
   const auto perm = perm_indexes_assumption[n_perm];
   int accept = create_PS(ps, x, perm);
 
-#ifndef NDEBUG
+#ifdef DEBUG_MODE
   if (accept > 0) {
     ostringstream os;
     ps.print(os);
@@ -2503,10 +2519,10 @@ double MEM::Integrand::transfer(const PS &ps, const vector<int> &perm,
   }
 
 #ifdef DEBUG_MODE
-  if (debug_code & DebugVerbosity::integration) {
-    cout << "\tTotal transfer function: " << w << " (" << accept
+  if (VLOG_IS_ON(3)) {
+    DVLOG(3) << "\tTotal transfer function: " << w << " (" << accept
          << " functions are out-of-range by more than " << cfg.tf_offscale
-         << " sigmas" << endl;
+         << " sigmas";
   }
 #endif
 
@@ -2543,9 +2559,11 @@ double MEM::Integrand::scattering(const LV &top, const LV &atop, const LV &b1,
   LV rad(additional_jet.Px(), additional_jet.Py(), additional_jet.Pz(),
          additional_jet.E());
 
+#ifdef DEBUG_MODE
   for (auto &v : {t, tx, b, bx, h}) {
     assert(GOOD_VEC(v));
   }
+#endif
 
   const bool has_rad = additional_jet.E() > 0 &&
                        (cfg.int_code & IntegrandType::AdditionalRadiation);
@@ -2643,11 +2661,11 @@ double MEM::Integrand::scattering(const LV &top, const LV &atop, const LV &b1,
   delete[] ps;
 
 #ifdef DEBUG_MODE
-  if (debug_code & DebugVerbosity::integration) {
-    cout << "\t\tTotal (px,py,pz,E) = (" << sum.Px() << "," << sum.Py() << ","
-         << sum.Pz() << "," << sum.E() << ")" << endl;
-    cout << "\t\tGluons (x1,x2)     = (" << x1 << "," << x2 << ")" << endl;
-    cout << "\t\tM2 (OpenLoops)     = " << M2 << endl;
+  if (VLOG_IS_ON(3)) {
+    DVLOG(3) << "\t\tTotal (px,py,pz,E) = (" << sum.Px() << "," << sum.Py() << ","
+         << sum.Pz() << "," << sum.E() << ")";
+    DVLOG(3) << "\t\tGluons (x1,x2)     = (" << x1 << "," << x2 << ")";
+    DVLOG(3) << "\t\tM2 (OpenLoops)     = " << M2;
   }
 #endif
 
@@ -2678,8 +2696,8 @@ double MEM::Integrand::pdf(const double &x1, const double &x2,
   double f2 = LHAPDF::xfx(0, x2, Q, 0) / x2;
 
 #ifdef DEBUG_MODE
-  if (debug_code & DebugVerbosity::integration) {
-    cout << "\t\tPDF(x1,Q)*PDF(x2,Q) = " << f1 << "*" << f2 << endl;
+  if (VLOG_IS_ON(3)) {
+    DVLOG(3) << "\t\tPDF(x1,Q)*PDF(x2,Q) = " << f1 << "*" << f2;
   }
 #endif
 
@@ -2728,14 +2746,13 @@ double MEM::Integrand::t_decay_amplitude(const TLorentzVector &q,
   p *= m2;
 
 #ifdef DEBUG_MODE
-  if (debug_code & DebugVerbosity::integration) {
-    cout << "\tIntegrand::t_decay_amplitude():" << endl;
-    cout << "\t\tBreit-Wigner top = " << BWTOP << " GeV^-2" << endl;
-    cout << "\t\tJacobian (Eqbar,Eb) -> (m2_qq, m2_qqb) = " << Jac << " GeV"
-         << endl;
-    cout << "\t\t|M2|(t->bqq') = " << m2
-         << (charge_q == 0 ? " (charge symmetrised)" : "") << endl;
-    cout << "\t\tTotal = " << p << " GeV^-1" << endl;
+  if (VLOG_IS_ON(3)) {
+    DVLOG(3) << "\tIntegrand::t_decay_amplitude():";
+    DVLOG(3) << "\t\tBreit-Wigner top = " << BWTOP << " GeV^-2";
+    DVLOG(3) << "\t\tJacobian (Eqbar,Eb) -> (m2_qq, m2_qqb) = " << Jac << " GeV";
+    DVLOG(3) << "\t\t|M2|(t->bqq') = " << m2
+         << (charge_q == 0 ? " (charge symmetrised)" : "");
+    DVLOG(3) << "\t\tTotal = " << p << " GeV^-1";
   }
 #endif
 
@@ -2761,16 +2778,15 @@ double MEM::Integrand::H_decay_amplitude(const TLorentzVector &b,
   p *= m2;
 
 #ifdef DEBUG_MODE
-  if (debug_code & DebugVerbosity::integration) {
-    cout << "\tIntegrand::H_decay_amplitude():" << endl;
+  if (VLOG_IS_ON(3)) {
+    DVLOG(3) << "\tIntegrand::H_decay_amplitude():";
     if (hypo == Hypothesis::TTH) {
-      cout << "\t\tBreit-Wigner Higgs = " << BWH << " GeV^-2" << endl;
-      cout << "\t\tJacobian (Eb,Ebbar) -> (E_b, m2_bb) = " << Jac << " GeV"
-           << endl;
-      cout << "\t\t|M2|(t->bqq') = " << m2 << " GeV^2" << endl;
-      cout << "\t\tTotal = " << p << " GeV" << endl;
+      DVLOG(3) << "\t\tBreit-Wigner Higgs = " << BWH << " GeV^-2";
+      DVLOG(3) << "\t\tJacobian (Eb,Ebbar) -> (E_b, m2_bb) = " << Jac << " GeV";
+      DVLOG(3) << "\t\t|M2|(t->bqq') = " << m2 << " GeV^2";
+      DVLOG(3) << "\t\tTotal = " << p << " GeV";
     } else {
-      cout << "\t\tJacobian = " << Jac << " GeV^2" << endl;
+      DVLOG(3) << "\t\tJacobian = " << Jac << " GeV^2";
     }
   }
 #endif
@@ -2785,9 +2801,9 @@ double MEM::Integrand::solve(const LV &p4_w, const double &DM2, const double &M,
   double b = TMath::Cos(p4_w.Angle(e_b));
   if (M < 1e-03) {
 #ifdef DEBUG_MODE
-    if (debug_code & DebugVerbosity::integration) {
-      cout << "\t\tUse masless formula: " << a << "/(1-" << b
-           << ")=" << a / (1 - b) << endl;
+    if (VLOG_IS_ON(3)) {
+      DVLOG(3) << "\t\tUse masless formula: " << a << "/(1-" << b
+           << ")=" << a / (1 - b);
     }
 #endif
     if (b < 1.)
@@ -2810,8 +2826,8 @@ double MEM::Integrand::solve(const LV &p4_w, const double &DM2, const double &M,
   // make sure there is >0 solutions
   if ((a2 + b2 - 1) < 0.) {
 #ifdef DEBUG_MODE
-    if (debug_code & DebugVerbosity::integration) {
-      cout << "\t\t(a2 + b2 - 1)<0. return max()" << endl;
+    if (VLOG_IS_ON(3)) {
+      DVLOG(3) << "\t\t(a2 + b2 - 1)<0. return max()";
     }
 #endif
     accept = -1;
@@ -2825,8 +2841,8 @@ double MEM::Integrand::solve(const LV &p4_w, const double &DM2, const double &M,
   // make sure this is >1 ( g_m < g_p )
   if (g_p < 1.0) {
 #ifdef DEBUG_MODE
-    if (debug_code & DebugVerbosity::integration) {
-      cout << "\t\tg_p=" << g_p << ": return max()" << endl;
+    if (VLOG_IS_ON(3)) {
+      DVLOG(3) << "\t\tg_p=" << g_p << ": return max()";
     }
 #endif
     accept = -1;
@@ -2840,7 +2856,7 @@ double MEM::Integrand::solve(const LV &p4_w, const double &DM2, const double &M,
   if (b > 0) {
     if (discr < 0) {
       //#ifdef DEBUG_MODE
-      //        if (debug_code & DebugVerbosity::integration) {
+      //        if (VLOG_IS_ON(3)) {
       //          cout << "\t\tb>0 AND discr<0: return root closest to target"
       //          << endl;
       //          LV p4_b(e_b * (sqrt(g_p * g_p - 1) * M), g_p * M);
@@ -2885,7 +2901,7 @@ double MEM::Integrand::solve(const LV &p4_w, const double &DM2, const double &M,
                   : g_m * M);
     }
     //#ifdef DEBUG_MODE
-    //      if (debug_code & DebugVerbosity::integration) {
+    //      if (VLOG_IS_ON(3)) {
     //        cout << "\t\tb>0 AND discr>0: return g_p*M" << endl;
     //      }
     //#endif
@@ -2893,7 +2909,7 @@ double MEM::Integrand::solve(const LV &p4_w, const double &DM2, const double &M,
   } else {
     if (discr > 0) {
       //#ifdef DEBUG_MODE
-      //        if (debug_code & DebugVerbosity::integration) {
+      //        if (VLOG_IS_ON(3)) {
       //          cout << "\t\tb<0 AND discr>0: return g_m*M" << endl;
       //        }
       //#endif
@@ -2901,7 +2917,7 @@ double MEM::Integrand::solve(const LV &p4_w, const double &DM2, const double &M,
     }
   }
   //#ifdef DEBUG_MODE
-  //  if (debug_code & DebugVerbosity::integration) {
+  //  if (VLOG_IS_ON(3)) {
   //    cout << "\tIntegrand::solve(): END" << endl;
   //  }
   //#endif

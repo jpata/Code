@@ -603,7 +603,8 @@ MEM::MEMConfig::MEMConfig(int nmc,
                           MEM::TFMethod::TFMethod method,
 			  int minim,
 			  int permprun, double permrel,
-			  int prefit){
+			  int prefit,
+                          int _max_permutations){
   n_max_calls  = nmc;
   abs          = ab;
   rel          = re;
@@ -633,6 +634,7 @@ MEM::MEMConfig::MEMConfig(int nmc,
   do_perm_filtering  = permprun;
   perm_filtering_rel = permrel;
   do_prefit          = prefit;
+  max_permutations = _max_permutations;
 }
 
 void MEM::MEMConfig::defaultCfg(float nCallsMultiplier){

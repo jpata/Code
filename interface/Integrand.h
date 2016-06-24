@@ -100,8 +100,8 @@ class Integrand {
 
   void do_integration(unsigned int npar, double *, double *, double &, double &,
                       double &);
-  void do_minimization(unsigned int npar, double *, double *, double &,
-                       double &, double &);
+  //  void do_minimization(unsigned int npar, double *, double *, double &,
+  //                       double &, double &);
 
   // clear containers before new hypothesis
   void next_hypo();
@@ -131,7 +131,7 @@ class Integrand {
       const std::vector<int> &) const;
 
   // main method. Needed by GSLMCIntegrator
-  double Eval(const double *) const;
+  double Eval(const double *);
 
   /**
   Creates a physical phase space point ps from an integrable phase space point
@@ -170,7 +170,7 @@ class Integrand {
   /param n_perm index of permutation
   /return The ME*TF probability corresponding to the current hypothesis
   */
-  double probability(const double *x, const std::size_t n_perm) const;
+  double probability(const double *x, const std::size_t n_perm);
 
   double constants() const;
 
@@ -212,14 +212,13 @@ class Integrand {
                const double &, int &) const;
 
   // get integration edges
-  void get_edges(double *, const std::vector<PSVar::PSVar> &,
-                 const std::size_t &, const std::size_t &);
+  void get_edges(double *, const std::vector<PSVar::PSVar> &, size_t, size_t);
 
   // get widths
   double get_width(const double *, const double *, const std::size_t);
 
   // get permutation number n
-  vector<int> get_permutation(const std::size_t &);
+  vector<int> get_permutation(size_t);
 
   // setup the minimzer
   void setup_minimizer();
@@ -280,10 +279,21 @@ class Integrand {
   CompPerm comparator;
 
   // contain indexes of obs_jets that need permutations
+  // filled in Integrand::init()
   std::vector<int> perm_index;
+
   std::size_t n_perm_max;
+
+  // the map of permutation index -> actual permutation vector
   std::vector<std::vector<int>> perm_indexes_assumption;
-  std::size_t this_perm;
+  // the index of the current permutation.
+  // needed to keep track of the permutation inside Eval() in case of doing
+  // the sum over permutations outside the integral in perm_int = 1.
+  size_t this_perm;
+
+  // counts how many times the TF was 0
+  size_t tf_zero;
+
   std::vector<double> perm_const_assumption;
   std::vector<double> perm_btag_assumption;
   std::vector<double> perm_tmpval_assumption;
@@ -292,6 +302,12 @@ class Integrand {
   std::vector<double> perm_btag_bb_assumption;
   std::vector<double> perm_btag_cc_assumption;
   std::vector<double> perm_btag_jj_assumption;
+
+  vector<unsigned long> permutations;
+  vector<vector<double>> permutation_probas;
+  vector<vector<double>> permutation_probas_constants;
+  vector<vector<double>> permutation_probas_transfer;
+  vector<vector<double>> permutation_probas_me;
 
   // status of the prefit (0= not run, 1= run and succesfull, -1= run and
   // unsuccesfull)

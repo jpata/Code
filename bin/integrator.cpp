@@ -39,10 +39,11 @@ int main(){
   //this needs to be done once per job, not for every event
   MEMConfig cfg;
   cfg.defaultCfg();
-  cfg.transfer_function_method = TFMethod::Builtin;
+  cfg.transfer_function_method = TFMethod::External;
   vector<Permutations::Permutations> pvec({Permutations::BTagged, Permutations::QUntagged, Permutations::QQbarBBbarSymmetry});
-  cfg.perm_pruning = pvec;
-  cfg.int_code = cfg.int_code + MEM::IntegrandType::AdditionalRadiation;
+  //cfg.perm_pruning = pvec;
+  //cfg.int_code = cfg.int_code + MEM::IntegrandType::AdditionalRadiation;
+  cfg.perm_int = 1;
   
   //Transfer functions for jet reconstruction efficiency
   cfg.set_tf_global(TFType::bLost, 0, getTransferFunction(tffile, "beff", 0.0));
@@ -153,12 +154,12 @@ int main(){
     cout << "evaluating tth hypo" << endl;
     //third variable is variables to integrate over
     //if nothing is specified, assume that all jets (4b + 2 light) were reconstructed
-    res = integrand->run( FinalState::LH, Hypothesis::TTH,  {}, {}, 1000 );
+    res = integrand->run( FinalState::LH, Hypothesis::TTH,  {}, {}, 100 );
     cout << "p = " << res.p << " +- " << res.p_err << endl;
     double p0 = res.p;
 
     cout << "evaluating ttbb hypo" << endl;
-    res = integrand->run( FinalState::LH, Hypothesis::TTBB, {}, {}, 1000  );
+    res = integrand->run( FinalState::LH, Hypothesis::TTBB, {}, {}, 100  );
     cout << "p = " << res.p << " +- " << res.p_err << endl;
     double p1 = res.p;
 
@@ -170,12 +171,12 @@ int main(){
     cout << "Integrating over light quarks" << endl;
     cout << "evaluating tth hypo" << endl;
     //integrate over the light quark angles
-    res = integrand->run( FinalState::LH, Hypothesis::TTH,  {PSVar::cos_q1, PSVar::phi_q1, PSVar::cos_qbar1, PSVar::phi_qbar1}, {}, 1000 );
+    res = integrand->run( FinalState::LH, Hypothesis::TTH,  {PSVar::cos_q1, PSVar::phi_q1, PSVar::cos_qbar1, PSVar::phi_qbar1}, {}, 100 );
     cout << "p = " << res.p << " +- " << res.p_err << endl;
     p0 = res.p;
     
     cout << "evaluating ttbb hypo" << endl;
-    res = integrand->run( FinalState::LH, Hypothesis::TTBB, {PSVar::cos_q1, PSVar::phi_q1, PSVar::cos_qbar1, PSVar::phi_qbar1}, {}, 1000 );
+    res = integrand->run( FinalState::LH, Hypothesis::TTBB, {PSVar::cos_q1, PSVar::phi_q1, PSVar::cos_qbar1, PSVar::phi_qbar1}, {}, 100 );
     cout << "p = " << res.p << " +- " << res.p_err << endl;
     p1 = res.p;
     

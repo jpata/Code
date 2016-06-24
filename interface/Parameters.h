@@ -3,7 +3,7 @@
 
 //#define DEBUG_MODE
 
-//needed for easylogging
+// needed for easylogging
 #ifndef DEBUG_MODE
 #define NDEBUG
 #endif
@@ -265,7 +265,7 @@ class Object {
   DistributionType::DistributionType distribution_type() const;
   DistributionType::DistributionType distribution_type_bkp() const;
   double getObs(const Observable::Observable&) const;
-  TF1* getTransferFunction(const TFType::TFType&);
+  TF1* getTransferFunction(TFType::TFType);
   std::size_t getNumTransferFunctions() const;
   bool isSet(const Observable::Observable&) const;
   void addObs(const Observable::Observable&, const double&);
@@ -282,8 +282,8 @@ class Object {
   std::unordered_map<const TFType::TFType, TF1*, TFTypeHash, TFTypeEqual>
       transfer_funcs;
 };
-pair<double, double> get_support(double*, const TFType::TFType&, const double&,
-                                 const int&, Object* = nullptr);
+pair<double, double> get_support(double*, TFType::TFType, double, int,
+                                 Object* = nullptr);
 
 namespace PSVar {
 enum PSVar {
@@ -525,9 +525,8 @@ struct MEMConfig {
       int = 0,         // do minimisation instead of integration
       int = 0,         // do runtime pruning of permutations
       double = 1e-03,  // pruning accuracy
-      int = 0,          // prefit
-      int max_permutations = 500
-      );
+      int = 0,         // prefit
+      int max_permutations = 500);
 
   void defaultCfg(float nCallsMultiplier = 1.0);
   void setNCalls(FinalState::FinalState, Hypothesis::Hypothesis,
@@ -570,7 +569,10 @@ struct MEMConfig {
   double b_range_CL;
   double m_range_CL;
 
-  // do sum over permutations inside or outside integral
+  // flag that configures if permutation sum is done inside or outside the
+  // integral
+  // perm_int == 1: do_integration does \sum_perm \int
+  // perm_int == 0: do_integration does \int \sum_perm
   int perm_int;
 
   // the number of jets for which the tf,
@@ -603,7 +605,7 @@ struct MEMConfig {
   // do a pre-fit to filter permutations
   int do_prefit;
 
-  //maximum number of permutations to consider
+  // maximum number of permutations to consider
   int max_permutations;
 
   std::map<std::pair<TFType::TFType, int>, TF1*> tf_map;
@@ -611,7 +613,8 @@ struct MEMConfig {
   std::map<DistributionType::DistributionType, TH3D*> btag_pdfs;
 };
 
-struct MEMOutput {
+class MEMOutput {
+ public:
   double p;
   double p_err;
   double chi2;
@@ -623,8 +626,18 @@ struct MEMOutput {
   int prefit_code;
   std::size_t num_perm;
   std::size_t assumption;
+
+  size_t tf_zero;
   FinalState::FinalState final_state;
   Hypothesis::Hypothesis hypothesis;
+
+  vector<size_t> permutations;
+  vector<vector<int>> permutation_indexes;
+  vector<vector<double>> permutation_probas;
+  vector<vector<double>> permutation_probas_constants;
+  vector<vector<double>> permutation_probas_transfer;
+  vector<vector<double>> permutation_probas_me;
+
   void print(std::ostream& os) {
     os.precision(3);
     os << "\t**************** MEM output ****************" << endl;
@@ -644,7 +657,7 @@ struct MEMOutput {
     os << "\tMaximum number of calls = " << num_max_calls << endl;
     os << "\tPhase-space efficiency  = " << efficiency * 100 << "%" << endl;
     os << "\tError code              = " << error_code << endl;
-    os << "\tPre-fit code            = " << prefit_code << endl;
+    os << "\tTF = 0                  = " << tf_zero << endl;
     os << "\tJob done in..............." << time * 0.001 << " seconds" << endl;
     os << "\t********************************************" << endl;
     os.precision(8);

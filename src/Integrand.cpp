@@ -28,6 +28,9 @@ int is_nth_bit_set(unsigned long c, size_t n) {
   return ((c & mask[n]) != 0);
 }
 
+/**
+Converts a bit value stored long into a vector of 0 and 1 elements.
+*/
 vector<int> bitmask_to_vec(unsigned long mask, size_t length) {
   vector<int> ret;
   for (size_t i = 0; i < length; i++) {
@@ -60,9 +63,8 @@ MEM::Integrand::Integrand(int debug, const MEMConfig &config)
   comparator = CompPerm();
 
   // init PDF set
-  const char *pdfstr = cfg.pdfset.c_str();
-  LOG(INFO) << pdfstr << endl;
-  LHAPDF::initPDFSet(0, pdfstr);
+  LOG(INFO) << cfg.pdfset << endl;
+  LHAPDF::initPDFSet(0, cfg.pdfset.c_str());
 
   const string cmssw_path(std::getenv("CMSSW_BASE"));
   const string scram_arch(std::getenv("SCRAM_ARCH"));
@@ -72,10 +74,10 @@ MEM::Integrand::Integrand(int debug, const MEMConfig &config)
 
   // Set parameter: Z mass
   ol_setparameter_double("mass(6)", MEM::MTOP);
-  ol_setparameter_double("psp_tolerance", 0.001);
+  // ol_setparameter_double("psp_tolerance", 0.001);
 
-  // Increase verbosity level to list loaded libraries
   ol_setparameter_int("verbose", 0);
+
   // ttH
   ol_setparameter_int("order_ew", 1);
   processes[Process::TTH] = ol_register_process("21 21 -> 25 6 -6", 1);  // tth
@@ -117,7 +119,9 @@ MEM::Integrand::~Integrand() {
   obs_leptons.clear();
   obs_mets.clear();
   perm_index.clear();
-  for (auto p : perm_indexes_assumption) p.clear();
+  for (auto p : perm_indexes_assumption) {
+    p.clear();
+  }
   perm_indexes_assumption.clear();
   perm_const_assumption.clear();
   perm_btag_assumption.clear();
@@ -147,17 +151,16 @@ MEM::Integrand::~Integrand() {
 */
 void MEM::Integrand::init(const MEM::FinalState::FinalState f,
                           const MEM::Hypothesis::Hypothesis h) {
-  if (debug_code & DebugVerbosity::init) {
-    cout << "Integrand::init(): START" << endl;
-  }
-
   // set hypothesis to be tested
   hypo = h;
   fs = f;
 
-  assert(int(obs_leptons.size()) ==
-         (0 * (fs == FinalState::HH || fs == FinalState::TTH) +
-          1 * (fs == FinalState::LH) + 2 * (fs == FinalState::LL)));
+  if (!(int(obs_leptons.size()) ==
+        (0 * (fs == FinalState::HH || fs == FinalState::TTH) +
+         1 * (fs == FinalState::LH) + 2 * (fs == FinalState::LL)))) {
+    LOG(ERROR) << "Wrong number of leptons supplied: nl=" << obs_leptons.size()
+               << " hypo=" << fs;
+  };
 
   // a class member: used to keep track of how many quarks are expected
   naive_jet_counting = 8 * (fs == FinalState::HH) + 6 * (fs == FinalState::LH) +
@@ -166,14 +169,16 @@ void MEM::Integrand::init(const MEM::FinalState::FinalState f,
   // deal with jets:
   // if less jets are recorded than the naive_jet_counting,
   // fill in perm_index with -1;
-  size_t n_jets = obs_jets.size();
+  const size_t n_jets = obs_jets.size();
 
   // fill the permutation word
+  // it will contain the indexes of the observed jets
   perm_index.clear();
-  for (unsigned int id = 0; id < n_jets; ++id) {
+  for (size_t id = 0; id < n_jets; ++id) {
     perm_index.push_back((int)id);
   }
 
+  // and -1 for any jets that were expected but not observed
   while (perm_index.size() < naive_jet_counting) {
     perm_index.push_back(-1);
   }
@@ -183,12 +188,12 @@ void MEM::Integrand::init(const MEM::FinalState::FinalState f,
     smear_met();
   }
 
-  // calculate upper / lower edges
+  const bool external_tf = (cfg.transfer_function_method == TFMethod::External);
+  // calculate upper / lower edges of the integration boundares
   for (auto &j : obs_jets) {
-    const bool external_tf =
-        (cfg.transfer_function_method == TFMethod::External);
-    if (external_tf) {
-      assert(j->getNumTransferFunctions() > 0);
+    if (external_tf && j->getNumTransferFunctions() == 0) {
+      LOG(ERROR) << "TFMethod::External specified in cfg but jet supplied "
+                 << j->getNumTransferFunctions() << " transfer functions";
     }
     // smear gen jets by TF
     if (cfg.int_code & IntegrandType::SmearJets) smear_jet(j, external_tf);
@@ -225,13 +230,14 @@ void MEM::Integrand::init(const MEM::FinalState::FinalState f,
   } while (next_permutation(perm_index_copy.begin(), perm_index_copy.end(),
                             comparator));
 
-  DVLOG(1) << "\tMaximum of " << n_perm_max << " permutation(s) considered";
+  DVLOG(1) << "Maximum of " << n_perm_max << " permutation(s) considered";
+
+  // are we looking at decays of top and higgs?
+  const int unstable =
+      (fs == FinalState::LH || fs == FinalState::LL || fs == FinalState::HH);
 
   // Formula to get the number of unknowns
   // The number of variables is equal to npar - 2*extra_jets
-  int unstable =
-      (fs == FinalState::LH || fs == FinalState::LL || fs == FinalState::HH);
-
   if (unstable) {
     ps_dim = (3 +  // top: 2x W daughters, b
               3 +  // antitop: 2x W daughters, b
@@ -258,38 +264,46 @@ void MEM::Integrand::init(const MEM::FinalState::FinalState f,
       // MET Px/Py
       - 2 * (obs_mets.size() == 0);
 
-    DVLOG(1) << "Total of " << num_of_vars
-         << " unknowns (does not take into account lost jets)";
-    DVLOG(1) << "Integration code: " << cfg.int_code;
+  DVLOG(1) << "Total of " << num_of_vars
+           << " unknowns (does not take into account lost jets)";
+  DVLOG(1) << "Integration code: " << cfg.int_code;
 
   return;
 }
 
-vector<int> MEM::Integrand::get_permutation(const std::size_t &n) {
+/**
+Searches for the n-th element inside the perm_index vector
+*/
+vector<int> MEM::Integrand::get_permutation(size_t n) {
+  // make a copy here because looping over with next_permutation changes the
+  // list
   vector<int> perm_index_copy = perm_index;
   std::size_t n_perm{0};
   do {
     if (n == n_perm) {
+#ifdef DEBUG_MODE
       if (VLOG_IS_ON(3)) {
         ostringstream os;
         for (auto ind : perm_index_copy) {
-            os << ind << " ";
+          os << ind << " ";
         }
         DVLOG(3) << "\tperm. " << n_perm << ": [ " << os.str() << " ]";
       }
+#endif
       return perm_index_copy;
     }
     ++n_perm;
   } while (next_permutation(perm_index_copy.begin(), perm_index_copy.end(),
                             comparator));
-
+  // dummy return
+  // FIXME: should throw here?
   return vector<int>{};
 }
 
 void MEM::Integrand::get_edges(double *lim,
                                const std::vector<PSVar::PSVar> &lost,
-                               const size_t &nvar, const size_t &edge) {
-  // convention is:
+                               size_t nvar, size_t edge) {
+  // for lost particles, the convention is by the particle index
   //   even <=> cosTheta [-1,   +1]
   //   odd  <=> phi      [-PI, +PI]
   size_t count_extra{0};
@@ -299,10 +313,11 @@ void MEM::Integrand::get_edges(double *lim,
 
   switch (fs) {
     case FinalState::LH:
-      if (cfg.m_range_CL < 1.)
+      if (cfg.m_range_CL < 1.) {
         phi_edges =
             get_support(y, TFType::MET,
                         (edge ? +cfg.m_range_CL : -cfg.m_range_CL), debug_code);
+      }
       // work-around for events with very high MET, in which case the MET phi
       // edges are not correctly found
       // in this case, reverse the edges here if they are in the wrong order
@@ -320,10 +335,11 @@ void MEM::Integrand::get_edges(double *lim,
       if (hypo == Hypothesis::TTBB)
         lim[map_to_var[PSVar::E_bbar]] = edge ? 1. : 0.;
       for (auto l = lost.begin(); l != lost.end(); ++l) {
-        if (edge)
+        if (edge) {
           lim[map_to_var[*l]] = count_extra % 2 == 0 ? +1 : +TMath::Pi();
-        else
+        } else {
           lim[map_to_var[*l]] = count_extra % 2 == 0 ? -1 : -TMath::Pi();
+        }
         ++count_extra;
       }
       break;
@@ -371,12 +387,16 @@ void MEM::Integrand::get_edges(double *lim,
       break;
   }
 
+#ifdef DEBUG_MODE
   if (VLOG_IS_ON(2)) {
     DVLOG(2) << "\tIntegrand::get_edges(): SUMMARY" << endl;
     ostringstream os;
-    for (size_t i = 0; i < nvar; ++i) os << lim[i] << " ";
+    for (size_t i = 0; i < nvar; ++i) {
+      os << lim[i] << " ";
+    }
     DVLOG(2) << (edge ? "\t\tH" : "\t\tL") << " edges: [ " << os.str() << "]";
   }
+#endif
 }
 
 double MEM::Integrand::get_width(const double *xL, const double *xU,
@@ -470,21 +490,24 @@ void MEM::Integrand::fill_map(const std::vector<PSVar::PSVar> &lost) {
     map_to_var[PSVar::Pz_h] = 6;
   }
 
-  if (debug_code & DebugVerbosity::init_more) {
-    cout << "\tIntegrand::fill_map(): SUMMARY" << endl;
-    cout << "\tMapping between phase-space variables and VEGAS variables:"
-         << endl;
+  if (VLOG_IS_ON(2)) {
+    VLOG(2) << "Integrand::fill_map(): SUMMARY";
+    VLOG(2) << "Mapping between phase-space variables and VEGAS variables:";
+    ostringstream os;
     for (auto iter = map_to_var.begin(); iter != map_to_var.end(); ++iter) {
-      cout << "\t\tPS[" << static_cast<int>(iter->first) << "] maps to x["
-           << iter->second << "]" << endl;
+      os << "PS[" << static_cast<int>(iter->first) << "] maps to x["
+         << iter->second << "]";
     }
-    cout << "\tMapping between quarks and objects in the permuted obs_ "
-            "collections:"
-         << endl;
+    VLOG(2) << os.str();
+    VLOG(2) << "Mapping between quarks and objects in the permuted obs_ "
+               "collections:"
+            << endl;
+    ostringstream os2;
     for (auto iter = map_to_part.begin(); iter != map_to_part.end(); ++iter) {
-      cout << "\t\tParticle (" << static_cast<int>(iter->first)
-           << ") maps to position " << iter->second << endl;
+      os2 << "Particle (" << static_cast<int>(iter->first)
+          << ") maps to position " << iter->second << endl;
     }
+    VLOG(2) << os2.str();
   }
 
   return;
@@ -505,9 +528,12 @@ void MEM::Integrand::push_back_object(const LV &p4,
       obs_mets.push_back(obj);
       break;
     default:
-      cout << "*** MEM::Intgrator::push_back_object(): Unknown type of object "
-              "added"
-           << endl;
+      LOG(ERROR)
+          << "*** MEM::Intgrator::push_back_object(): Unknown type of object "
+             "added"
+          << type;
+      throw std::runtime_error(
+          "MEM::Intgrator::push_back_object() unknown object type");
       break;
   }
 
@@ -578,7 +604,7 @@ void MEM::Integrand::add_object_observable(
 //
 // void MEM::Integrand::set_sqrts(const double &s) { cfg.sqrts = s; }
 
-//FIXME: verify that this is safe
+// FIXME: verify that this is safe
 void MEM::Integrand::set_cfg(const MEMConfig &config) { cfg = config; }
 
 //// void MEM::Integrand::set_permutation_strategy(const
@@ -637,7 +663,7 @@ MEM::MEMOutput MEM::Integrand::run(const MEM::FinalState::FinalState f,
   // start the clock....
   auto t1 = high_resolution_clock::now();
 
-  // do the calculation
+  // do the calculation of the matrix element
   make_assumption(missed, any, out);
 
   // stop the clock!
@@ -646,14 +672,21 @@ MEM::MEMOutput MEM::Integrand::run(const MEM::FinalState::FinalState f,
   out.time = static_cast<int>(duration_cast<milliseconds>(t2 - t1).count());
   out.num_perm = perm_pruned.size() > 0 ? perm_pruned.size()
                                         : perm_indexes_assumption.size();
+  out.tf_zero = this->tf_zero;
   out.final_state = fs;
   out.hypothesis = h;
   out.assumption = list.size() / 2;
-  out.num_max_calls = n_max_calls;
-  out.num_calls = n_calls;
+  out.num_max_calls = this->n_max_calls;
+  out.num_calls = this->n_calls;
   out.efficiency = float(n_calls) / (n_calls + n_skip);
-  out.error_code = error_code;
-  out.prefit_code = prefit_code;
+  out.error_code = this->error_code;
+  out.prefit_code = this->prefit_code;
+  out.permutation_indexes = this->perm_indexes_assumption;
+  out.permutation_probas = this->permutation_probas;
+  out.permutation_probas_constants = this->permutation_probas_constants;
+  out.permutation_probas_transfer = this->permutation_probas_transfer;
+  out.permutation_probas_me = this->permutation_probas_me;
+
   LOG(DEBUG) << "Integration took " << (double)out.time / (double)n_calls
              << " ms/point";
 
@@ -686,6 +719,7 @@ void MEM::Integrand::next_event() {
   prefit_step = 0;
   n_calls = 0;
   n_skip = 0;
+  tf_zero = 0;
   // cfg.is_default = true;
   n_perm_max = 0;
   prefit_code = 0;
@@ -698,6 +732,11 @@ void MEM::Integrand::next_event() {
   perm_btag_jj_assumption.clear();
   perm_btag_cc_assumption.clear();
   perm_tmpval_assumption.clear();
+  permutations.clear();
+  permutation_probas.clear();
+  permutation_probas_constants.clear();
+  permutation_probas_transfer.clear();
+  permutation_probas_me.clear();
   perm_pruned.clear();
   map_to_var.clear();
   map_to_part.clear();
@@ -794,7 +833,8 @@ void MEM::Integrand::make_assumption(
   //    CASE (1) ==> perm contains already -1: then -1 must be aligned with the
   //    lost quark
   //    CASE (2) ==> perm does not contain -1: then set the correct index to -1
-  LOG(DEBUG) << "filtering permutations with cfg.perm_pruning=" << vec_to_string(cfg.perm_pruning);
+  LOG(DEBUG) << "filtering permutations with cfg.perm_pruning="
+             << vec_to_string(cfg.perm_pruning);
   for (std::size_t n_perm = 0; n_perm < n_perm_max; ++n_perm) {
     auto perm = get_permutation(n_perm);
     if (perm.size() == 0) continue;
@@ -840,19 +880,20 @@ void MEM::Integrand::make_assumption(
   DVLOG(1) << perms_to_string(perm_indexes_assumption, perm_const_assumption);
   LOG(INFO) << "A total of " << perm_indexes_assumption.size()
             << " permutations have been considered for this assumption";
-  if (cfg.max_permutations>0 && perm_indexes_assumption.size() > (unsigned int)cfg.max_permutations) {
+  if (cfg.max_permutations > 0 &&
+      perm_indexes_assumption.size() > (unsigned int)cfg.max_permutations) {
     LOG(ERROR) << "Too many permutations, bailing out";
-    for (auto & obj : obs_jets) {
+    for (auto &obj : obs_jets) {
       ostringstream os;
       obj->print(os);
       LOG(DEBUG) << "jet " << os.str();
     }
-    for (auto & obj : obs_leptons) {
+    for (auto &obj : obs_leptons) {
       ostringstream os;
       obj->print(os);
       LOG(DEBUG) << "lep " << os.str();
     }
-    for (auto & obj : obs_mets) {
+    for (auto &obj : obs_mets) {
       ostringstream os;
       obj->print(os);
       LOG(DEBUG) << "met " << os.str();
@@ -868,41 +909,45 @@ void MEM::Integrand::make_assumption(
   get_edges(xU, lost, npar, 1);
   double volume = get_width(xL, xU, npar);
 
-  if (cfg.do_minimize) {
-    LOG(DEBUG) << "Minimising...";
-    do_minimization(npar, xL, xU, prob, err2, chi2);
-  }
+  LOG(DEBUG) << "Marginalising...";
+  do_integration(npar, xL, xU, prob, err2, chi2);
 
-  else if (!cfg.do_minimize && !cfg.do_prefit) {
-    LOG(DEBUG) << "Marginalising...";
-    do_integration(npar, xL, xU, prob, err2, chi2);
-  }
+  //
+  //  if (cfg.do_minimize) {
+  //    LOG(DEBUG) << "Minimising...";
+  //    do_minimization(npar, xL, xU, prob, err2, chi2);
+  //  }
 
-  else if (!cfg.do_minimize && cfg.do_prefit) {
-    LOG(DEBUG) << "Marginalising with prefit...";
-    prefit_step = 0;
-    LOG(DEBUG) << "STEP...." << prefit_step << ": global minimisation";
-    do_minimization(npar, xL, xU, prob, err2, chi2);
-    prefit_step = 2;
-    LOG(DEBUG) << "STEP...." << prefit_step << ": marginalisation";
-    n_calls = 0;
-    n_skip = 0;
-    prob = 0.;
-    err2 = 0.;
-    error_code = 0;
-    chi2 = 0.;
-    // debug_code |= DebugVerbosity::integration;
-    do_integration(npar, xL, xU, prob, err2, chi2);
-  }
-
-  else {
-    /*...*/
-  }
+  //  if (!cfg.do_minimize && !cfg.do_prefit) {
+  //    LOG(DEBUG) << "Marginalising...";
+  //    do_integration(npar, xL, xU, prob, err2, chi2);
+  //  }
+  //
+  //  else if (!cfg.do_minimize && cfg.do_prefit) {
+  //    LOG(DEBUG) << "Marginalising with prefit...";
+  //    prefit_step = 0;
+  //    LOG(DEBUG) << "STEP...." << prefit_step << ": global minimisation";
+  //    do_minimization(npar, xL, xU, prob, err2, chi2);
+  //    prefit_step = 2;
+  //    LOG(DEBUG) << "STEP...." << prefit_step << ": marginalisation";
+  //    n_calls = 0;
+  //    n_skip = 0;
+  //    prob = 0.;
+  //    err2 = 0.;
+  //    error_code = 0;
+  //    chi2 = 0.;
+  //    // debug_code |= DebugVerbosity::integration;
+  //    do_integration(npar, xL, xU, prob, err2, chi2);
+  ////  }
+  //
+  //  else {
+  //    /*...*/
+  //  }
 
   if (!cfg.int_code) prob /= (volume * perm_indexes_assumption.size());
 
   if (TMath::IsNaN(prob)) {
-    cout << "\tdo_integration() returned a NaN" << endl;
+    LOG(ERROR) << "do_integration() returned a NaN";
     prob = 0.;
     err2 = 0.;
     chi2 = 99.;
@@ -923,11 +968,20 @@ void MEM::Integrand::do_integration(unsigned int npar, double *xL, double *xU,
   ROOT::Math::Functor toIntegrate(this, &MEM::Integrand::Eval, npar);
   ig2->SetFunction(toIntegrate);
 
+  for (std::size_t n_perm = 0; n_perm < perm_indexes_assumption.size();
+       ++n_perm) {
+    this->permutations.push_back(n_perm);
+    this->permutation_probas.push_back(vector<double>());
+    this->permutation_probas_constants.push_back(vector<double>());
+    this->permutation_probas_transfer.push_back(vector<double>());
+    this->permutation_probas_me.push_back(vector<double>());
+  }
+
   // do the integral permutation by permutation
   if (cfg.perm_int) {
     for (std::size_t n_perm = 0; n_perm < perm_indexes_assumption.size();
          ++n_perm) {
-      this_perm = n_perm;
+      this->this_perm = n_perm;
       // create integrator
       delete ig2;
       ig2 = new ROOT::Math::GSLMCIntegrator(
@@ -935,14 +989,15 @@ void MEM::Integrand::do_integration(unsigned int npar, double *xL, double *xU,
           n_max_calls);
       ig2->SetFunction(toIntegrate);
       double n_prob = ig2->Integral(xL, xU);
-      LOG(DEBUG) << "Permutation num. " << this_perm
+
+      LOG(DEBUG) << "Permutation num. " << this->this_perm
                  << " returned p=" << n_prob;
 
       prob += n_prob;
       err2 += TMath::Power(ig2->Error(), 2.);
       chi2 += ig2->ChiSqr() / perm_indexes_assumption.size();
     }  // loop over permutations
-  }
+  }    // perm_int
 
   // do the integral over the sum of permutations
   else {
@@ -950,7 +1005,7 @@ void MEM::Integrand::do_integration(unsigned int npar, double *xL, double *xU,
     double p_err = TMath::Power(ig2->Error(), 2.);
     double c2 = ig2->ChiSqr();
     if (TMath::IsNaN(p)) {
-      cout << "\tIntegral() returned a NaN..." << endl;
+      LOG(ERROR) << "\tIntegral() returned a NaN...";
       p = 0.;
       p_err = 0.;
       c2 = 99.;
@@ -959,141 +1014,146 @@ void MEM::Integrand::do_integration(unsigned int npar, double *xL, double *xU,
     prob += p;
     err2 += p_err;
     chi2 += c2;
-  }
+  }  // perm_int
 
+  cout << prob << endl;
   return;
 }
-
-void MEM::Integrand::do_minimization(const unsigned int npar, double *xL,
-                                     double *xU, double &prob, double &err2,
-                                     double &chi2) {
-  ROOT::Math::Functor toIntegrate(this, &MEM::Integrand::Eval, npar);
-  // ig2->SetFunction(toIntegrate);
-
-  // do a global minimization of the integrand
-  if (!cfg.perm_int || (cfg.do_prefit && prefit_step == 0)) {
-    size_t num_trials{0};
-
-    // setup the minimzer
-    if (minimizer != nullptr) {
-      delete minimizer;
-      minimizer = nullptr;
-    }
-    minimizer = ROOT::Math::Factory::CreateMinimizer("Minuit2", "");
-    setup_minimizer();
-    minimizer->SetFunction(toIntegrate);
-
-    // init variables
-    for (unsigned int np = 0; np < npar; ++np) {
-      string var_name = "par_" + std::to_string(np);
-      minimizer->SetLimitedVariable(np, var_name.c_str(), (xU[np] + xL[np]) / 2,
-                                    5e-02, xL[np], xU[np]);
-      if (debug_code & DebugVerbosity::init) {
-        printf("\tParam[%u] = %s set to %.2f. Range: [%.2f,%.2f]\n", np,
-               var_name.c_str(), (xU[np] + xL[np]) / 2, xL[np], xU[np]);
-      }
-    }
-
-    // run!
-    ++num_trials;
-    minimizer->Minimize();
-    if (cfg.do_prefit && minimizer->Status() != 0)
-      refine_minimization(num_trials, toIntegrate, npar, xL, xU);
-
-    double nll = minimizer->MinValue();
-    const double *xs = minimizer->X();
-
-    LOG(DEBUG) << "\tStatus = " << minimizer->Status() << " after "
-               << num_trials << " trials"
-               << ", Minimum nll = " << nll << " (p = " << TMath::Exp(-nll)
-               << ")";
-    ;
-    for (size_t var = 0; var < npar; ++var) {
-      LOG(DEBUG) << "\tVar[" << var << "] = " << xs[var] << endl;
-    }
-
-    if (cfg.do_prefit && minimizer->Status() == 0) {
-      prefit_code = 1;
-      prefit_step = 1;
-      if (debug_code & DebugVerbosity::init)
-        cout << "\tSTEP...." << prefit_step
-             << ": evaluate permutations at minimum" << endl;
-
-      for (std::size_t n_perm = 0; n_perm < perm_indexes_assumption.size();
-           ++n_perm) {
-        this_perm = n_perm;
-        perm_tmpval_assumption[n_perm] = TMath::Exp(-Eval(xs));
-      }
-      perm_pruned =
-          get_sorted_indexes(perm_tmpval_assumption, cfg.perm_filtering_rel);
-
-      if (debug_code & DebugVerbosity::init) {
-        cout << "\tPruning the " << perm_indexes_assumption.size()
-             << " permutations using the pre-fit" << endl;
-        for (size_t it = 0; it < perm_tmpval_assumption.size(); ++it) {
-          if (is_in(perm_pruned, it))
-            cout << "\t\t" << perm_tmpval_assumption[it] << " <==" << endl;
-          else
-            cout << "\t\t" << perm_tmpval_assumption[it] << endl;
-        }
-        cout << "\tTotal of " << perm_pruned.size() << " permutations filtered."
-             << endl;
-      }
-
-    } else {
-      prefit_code = -1;
-    }
-
-    // fill variables
-    prob += nll;
-    error_code = minimizer->Status();
-  }
-
-  // do a permutation-by-permutation minimization of the integrand
-  else {
-    double nll_min{numeric_limits<double>::max()};
-    for (unsigned int n_perm = 0; n_perm < perm_indexes_assumption.size();
-         ++n_perm) {
-      this_perm = n_perm;
-
-      // setup the minimzer
-      if (n_perm != 0) delete minimizer;
-      minimizer = ROOT::Math::Factory::CreateMinimizer("Minuit2", "");
-      setup_minimizer();
-
-      // init variables
-      for (unsigned int np = 0; np < npar; ++np) {
-        string var_name = "par_" + std::to_string(np);
-        minimizer->SetLimitedVariable(
-            np, var_name.c_str(), (xU[np] + xL[np]) / 2, 5e-02, xL[np], xU[np]);
-        if (debug_code & DebugVerbosity::init) {
-          printf("\tParam[%u] = %s set to %.2f. Range: [%.2f,%.2f]\n", np,
-                 var_name.c_str(), (xU[np] + xL[np]) / 2, xL[np], xU[np]);
-        }
-      }
-
-      // run!
-      minimizer->SetFunction(toIntegrate);
-      minimizer->Minimize();
-      double nll = minimizer->MinValue();
-      if (debug_code & DebugVerbosity::init) {
-        const double *xs = minimizer->X();
-        cout << "\tPermutation num. " << this_perm << " returned "
-             << "Status = " << minimizer->Status() << ", Minimum nll = " << nll
-             << " (p = " << TMath::Exp(-nll) << ")" << endl;
-        if (debug_code & DebugVerbosity::init_more) {
-          for (size_t var = 0; var < npar; ++var)
-            cout << "\tVar[" << var << "] = " << xs[var] << endl;
-        }
-      }
-
-      error_code += minimizer->Status();
-      if (nll < nll_min) prob = nll;
-    }
-  }
-
-  return;
-}
+//
+// void MEM::Integrand::do_minimization(const unsigned int npar, double *xL,
+//                                     double *xU, double &prob, double &err2,
+//                                     double &chi2) {
+//  ROOT::Math::Functor toIntegrate(this, &MEM::Integrand::Eval, npar);
+//  // ig2->SetFunction(toIntegrate);
+//
+//  // do a global minimization of the integrand
+//  if (!cfg.perm_int || (cfg.do_prefit && prefit_step == 0)) {
+//    size_t num_trials{0};
+//
+//    // setup the minimzer
+//    if (minimizer != nullptr) {
+//      delete minimizer;
+//      minimizer = nullptr;
+//    }
+//    minimizer = ROOT::Math::Factory::CreateMinimizer("Minuit2", "");
+//    setup_minimizer();
+//    minimizer->SetFunction(toIntegrate);
+//
+//    // init variables
+//    for (unsigned int np = 0; np < npar; ++np) {
+//      string var_name = "par_" + std::to_string(np);
+//      minimizer->SetLimitedVariable(np, var_name.c_str(), (xU[np] + xL[np]) /
+//      2,
+//                                    5e-02, xL[np], xU[np]);
+//      if (debug_code & DebugVerbosity::init) {
+//        printf("\tParam[%u] = %s set to %.2f. Range: [%.2f,%.2f]\n", np,
+//               var_name.c_str(), (xU[np] + xL[np]) / 2, xL[np], xU[np]);
+//      }
+//    }
+//
+//    // run!
+//    ++num_trials;
+//    minimizer->Minimize();
+//    if (cfg.do_prefit && minimizer->Status() != 0)
+//      refine_minimization(num_trials, toIntegrate, npar, xL, xU);
+//
+//    double nll = minimizer->MinValue();
+//    const double *xs = minimizer->X();
+//
+//    LOG(DEBUG) << "\tStatus = " << minimizer->Status() << " after "
+//               << num_trials << " trials"
+//               << ", Minimum nll = " << nll << " (p = " << TMath::Exp(-nll)
+//               << ")";
+//    ;
+//    for (size_t var = 0; var < npar; ++var) {
+//      LOG(DEBUG) << "\tVar[" << var << "] = " << xs[var] << endl;
+//    }
+//
+//    if (cfg.do_prefit && minimizer->Status() == 0) {
+//      prefit_code = 1;
+//      prefit_step = 1;
+//      if (debug_code & DebugVerbosity::init)
+//        cout << "\tSTEP...." << prefit_step
+//             << ": evaluate permutations at minimum" << endl;
+//
+//      for (std::size_t n_perm = 0; n_perm < perm_indexes_assumption.size();
+//           ++n_perm) {
+//        const auto this_perm = n_perm;
+//        perm_tmpval_assumption[n_perm] = TMath::Exp(-Eval(xs));
+//      }
+//      perm_pruned =
+//          get_sorted_indexes(perm_tmpval_assumption, cfg.perm_filtering_rel);
+//
+//      if (debug_code & DebugVerbosity::init) {
+//        cout << "\tPruning the " << perm_indexes_assumption.size()
+//             << " permutations using the pre-fit" << endl;
+//        for (size_t it = 0; it < perm_tmpval_assumption.size(); ++it) {
+//          if (is_in(perm_pruned, it))
+//            cout << "\t\t" << perm_tmpval_assumption[it] << " <==" << endl;
+//          else
+//            cout << "\t\t" << perm_tmpval_assumption[it] << endl;
+//        }
+//        cout << "\tTotal of " << perm_pruned.size() << " permutations
+//        filtered."
+//             << endl;
+//      }
+//
+//    } else {
+//      prefit_code = -1;
+//    }
+//
+//    // fill variables
+//    prob += nll;
+//    error_code = minimizer->Status();
+//  }
+//
+//  // do a permutation-by-permutation minimization of the integrand
+//  else {
+//    double nll_min{numeric_limits<double>::max()};
+//    for (unsigned int n_perm = 0; n_perm < perm_indexes_assumption.size();
+//         ++n_perm) {
+//      const auto this_perm = n_perm;
+//
+//      // setup the minimzer
+//      if (n_perm != 0) delete minimizer;
+//      minimizer = ROOT::Math::Factory::CreateMinimizer("Minuit2", "");
+//      setup_minimizer();
+//
+//      // init variables
+//      for (unsigned int np = 0; np < npar; ++np) {
+//        string var_name = "par_" + std::to_string(np);
+//        minimizer->SetLimitedVariable(
+//            np, var_name.c_str(), (xU[np] + xL[np]) / 2, 5e-02, xL[np],
+//            xU[np]);
+//        if (debug_code & DebugVerbosity::init) {
+//          printf("\tParam[%u] = %s set to %.2f. Range: [%.2f,%.2f]\n", np,
+//                 var_name.c_str(), (xU[np] + xL[np]) / 2, xL[np], xU[np]);
+//        }
+//      }
+//
+//      // run!
+//      minimizer->SetFunction(toIntegrate);
+//      minimizer->Minimize();
+//      double nll = minimizer->MinValue();
+//      if (debug_code & DebugVerbosity::init) {
+//        const double *xs = minimizer->X();
+//        cout << "\tPermutation num. " << this_perm << " returned "
+//             << "Status = " << minimizer->Status() << ", Minimum nll = " <<
+//             nll
+//             << " (p = " << TMath::Exp(-nll) << ")" << endl;
+//        if (debug_code & DebugVerbosity::init_more) {
+//          for (size_t var = 0; var < npar; ++var)
+//            cout << "\tVar[" << var << "] = " << xs[var] << endl;
+//        }
+//      }
+//
+//      error_code += minimizer->Status();
+//      if (nll < nll_min) prob = nll;
+//    }
+//  }
+//
+//  return;
+//}
 
 vector<size_t> get_indexes(
     const std::unordered_map<MEM::PSPart::PSPart, std::size_t, MEM::PSPartHash,
@@ -1556,21 +1616,24 @@ MEM::Integrand::get_permutation_constants(const vector<int> &perm) const {
   return out;
 }
 
-double MEM::Integrand::Eval(const double *x) const {
+double MEM::Integrand::Eval(const double *x) {
   DVLOG(2) << "Integrand::Eval(): START Function call num. " << n_calls << endl;
   double p{0.};
 
   for (std::size_t n_perm = 0; n_perm < perm_indexes_assumption.size();
        ++n_perm) {
-    if (cfg.perm_int || (cfg.do_prefit && prefit_step == 1)) {
-      if (n_perm != this_perm) continue;
+    // Filter this permutation if doing permutation sum _outside_ the integral
+    // or if dealing with prefit
+    if (cfg.perm_int) {
+      if (n_perm != this->this_perm) continue;
     }
+
+    // filter this permutation if doing permutation filtering
     if (cfg.do_perm_filtering || (cfg.do_prefit && prefit_step == 2)) {
       if (!is_in(perm_pruned, n_perm)) continue;
     }
 
     double p0 = probability(x, n_perm);
-    //    double p1 = 1.0;
 
     // QUESTION: what is this perm_const_assumption?
     double p1 = cfg.int_code > 0 ? perm_const_assumption[n_perm] : 1.0;
@@ -1578,15 +1641,17 @@ double MEM::Integrand::Eval(const double *x) const {
              << ") = " << (p0 * p1) << endl
              << "P --> " << p << " + " << (p0 * p1) << endl;
 
-    p += (p0 * p1);
-  }
+    this->permutation_probas.at(n_perm).push_back(p0 * p1);
 
-  if (cfg.do_minimize || (cfg.do_prefit && prefit_step < 2)) {
-    if (p > 0.)
-      p = -TMath::Log(p);
-    else
-      p = numeric_limits<double>::max();
-  }
+    p += (p0 * p1);
+  }  // loop over permutations
+  //
+  //  if (cfg.do_minimize || (cfg.do_prefit && prefit_step < 2)) {
+  //    if (p > 0.)
+  //      p = -TMath::Log(p);
+  //    else
+  //      p = numeric_limits<double>::max();
+  //  }
 
   ++(const_cast<Integrand *>(this)->n_calls);
 
@@ -1817,20 +1882,19 @@ void MEM::Integrand::extend_PS(MEM::PS &ps, const MEM::PSPart::PSPart &part,
 #ifdef DEBUG_MODE
   if (VLOG_IS_ON(3)) {
     DVLOG(3) << "\t\tExtend phase-space point: adding variable "
-         << static_cast<size_t>(part);
+             << static_cast<size_t>(part);
     if (map_to_var.find(var_E) != map_to_var.end()) {
-      DVLOG(3) << "\t\tE   = x[" << map_to_var.find(var_E)->second << "] = " << E
-           << " GeV";
-    }
-    else {
+      DVLOG(3) << "\t\tE   = x[" << map_to_var.find(var_E)->second
+               << "] = " << E << " GeV";
+    } else {
       DVLOG(3) << "\t\tE   = SOLVE() = " << E << " GeV";
     }
     if (map_to_var.find(var_cos) != map_to_var.end() &&
         map_to_var.find(var_phi) != map_to_var.end()) {
       DVLOG(3) << "\t\tcos = x[" << map_to_var.find(var_cos)->second
-           << "] = " << TMath::Cos(dir.Theta());
+               << "] = " << TMath::Cos(dir.Theta());
       DVLOG(3) << "\t\tphi = x[" << map_to_var.find(var_phi)->second
-           << "] = " << dir.Phi();
+               << "] = " << dir.Phi();
     } else {
       DVLOG(3) << "\t\tUsing obs[" << pos << "]";
     }
@@ -1988,13 +2052,11 @@ int MEM::Integrand::create_PS_LL(MEM::PS &ps, const double *x,
     }
   }
 
-
   return accept;
 }
 
 int MEM::Integrand::create_PS_HH(MEM::PS &ps, const double *x,
                                  const vector<int> &perm) const {
-
   // corrupted phase space
   int accept{0};
 
@@ -2199,8 +2261,7 @@ int MEM::Integrand::create_PS_TTH(MEM::PS &ps, const double *x,
   return accept;
 }
 
-double MEM::Integrand::probability(const double *x,
-                                   const std::size_t n_perm) const {
+double MEM::Integrand::probability(const double *x, const std::size_t n_perm) {
   DVLOG(2) << "Integrand::probability(): START";
 
   // the total probability
@@ -2209,11 +2270,11 @@ double MEM::Integrand::probability(const double *x,
 
   // create phase-space point and test if it is physical
   PS ps(ps_dim);
-  const auto perm = perm_indexes_assumption[n_perm];
+  const auto perm = perm_indexes_assumption.at(n_perm);
   int accept = create_PS(ps, x, perm);
 
 #ifdef DEBUG_MODE
-  if (accept > 0) {
+  if (accept > 0 && VLOG_IS_ON(2)) {
     ostringstream os;
     ps.print(os);
     DVLOG(2) << "PS:" << os.str();
@@ -2226,10 +2287,19 @@ double MEM::Integrand::probability(const double *x,
     return 0.;
   }
 
-  p *= constants();
+  const auto p_const = constants();
+  this->permutation_probas_constants.at(n_perm).push_back(p_const);
 
-  p *= transfer(ps, perm_indexes_assumption[n_perm], accept);
-  if (cfg.do_prefit > 1 && prefit_step == 0) return p;
+  const auto p_tf = transfer(ps, perm_indexes_assumption[n_perm], accept);
+  this->permutation_probas_transfer.at(n_perm).push_back(p_tf);
+
+  // Skip ME calc if transfer function is 0
+  if (p_tf == 0) {
+    this->tf_zero += 1;
+    this->permutation_probas_me.at(n_perm).push_back(0.0);
+    return 0;
+  }
+  // if (cfg.do_prefit > 1 && prefit_step == 0) return p;
 
   if (cfg.tf_suppress && accept >= cfg.tf_suppress) {
     DVLOG(1) << "Transfer functions out-of-range " << accept
@@ -2238,8 +2308,10 @@ double MEM::Integrand::probability(const double *x,
     return 0.;
   }
 
-  p *= matrix(ps);
+  const auto p_mat = matrix(ps);
+  this->permutation_probas_me.at(n_perm).push_back(p_mat);
 
+  p = p_const * p_tf * p_mat;
   return p;
 }
 
@@ -2521,8 +2593,8 @@ double MEM::Integrand::transfer(const PS &ps, const vector<int> &perm,
 #ifdef DEBUG_MODE
   if (VLOG_IS_ON(3)) {
     DVLOG(3) << "\tTotal transfer function: " << w << " (" << accept
-         << " functions are out-of-range by more than " << cfg.tf_offscale
-         << " sigmas";
+             << " functions are out-of-range by more than " << cfg.tf_offscale
+             << " sigmas";
   }
 #endif
 
@@ -2662,8 +2734,8 @@ double MEM::Integrand::scattering(const LV &top, const LV &atop, const LV &b1,
 
 #ifdef DEBUG_MODE
   if (VLOG_IS_ON(3)) {
-    DVLOG(3) << "\t\tTotal (px,py,pz,E) = (" << sum.Px() << "," << sum.Py() << ","
-         << sum.Pz() << "," << sum.E() << ")";
+    DVLOG(3) << "\t\tTotal (px,py,pz,E) = (" << sum.Px() << "," << sum.Py()
+             << "," << sum.Pz() << "," << sum.E() << ")";
     DVLOG(3) << "\t\tGluons (x1,x2)     = (" << x1 << "," << x2 << ")";
     DVLOG(3) << "\t\tM2 (OpenLoops)     = " << M2;
   }
@@ -2749,9 +2821,10 @@ double MEM::Integrand::t_decay_amplitude(const TLorentzVector &q,
   if (VLOG_IS_ON(3)) {
     DVLOG(3) << "\tIntegrand::t_decay_amplitude():";
     DVLOG(3) << "\t\tBreit-Wigner top = " << BWTOP << " GeV^-2";
-    DVLOG(3) << "\t\tJacobian (Eqbar,Eb) -> (m2_qq, m2_qqb) = " << Jac << " GeV";
+    DVLOG(3) << "\t\tJacobian (Eqbar,Eb) -> (m2_qq, m2_qqb) = " << Jac
+             << " GeV";
     DVLOG(3) << "\t\t|M2|(t->bqq') = " << m2
-         << (charge_q == 0 ? " (charge symmetrised)" : "");
+             << (charge_q == 0 ? " (charge symmetrised)" : "");
     DVLOG(3) << "\t\tTotal = " << p << " GeV^-1";
   }
 #endif
@@ -2803,7 +2876,7 @@ double MEM::Integrand::solve(const LV &p4_w, const double &DM2, const double &M,
 #ifdef DEBUG_MODE
     if (VLOG_IS_ON(3)) {
       DVLOG(3) << "\t\tUse masless formula: " << a << "/(1-" << b
-           << ")=" << a / (1 - b);
+               << ")=" << a / (1 - b);
     }
 #endif
     if (b < 1.)

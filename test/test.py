@@ -1,4 +1,5 @@
 import ROOT
+import numpy as np
 ROOT.gSystem.Load("libFWCoreFWLite.so")
 ROOT.gSystem.Load("libTTHMEIntegratorStandalone.so")
 from ROOT import MEM
@@ -12,6 +13,37 @@ cfg.transfer_function_method = MEM.TFMethod.Builtin
 #mem = MEM.Integrand(MEM.output+MEM.input+MEM.init+MEM.init_more+MEM.integration, cfg)
 mem = MEM.Integrand(MEM.output, cfg)
 print mem
+
+def normalize_proba(vec):
+    proba_vec = np.array(vec)
+    proba_vec[proba_vec <= 1E-50] = 1E-50
+    ret = np.array(np.log10(proba_vec), dtype="float64")
+    return ret
+
+def save_perm_hists(outfile, res):
+    of = ROOT.TFile(outfile, "RECREATE")
+    for iperm in range(res.num_perm):
+        perm_str = ",".join([str(v) for v in res.permutation_indexes[iperm]])
+      
+        N = res.num_max_calls
+        v_p = normalize_proba([v for v in res.permutation_probas[iperm]])
+        v_p_tf = normalize_proba([v for v in res.permutation_probas_transfer[iperm]])
+        v_p_me = normalize_proba([v for v in res.permutation_probas_me[iperm]])
+
+        w = np.ones(N, dtype="float64")
+        h = ROOT.TH1D("perm_p_{0}".format(iperm), "Permutation {0}: {1} proba".format(iperm, perm_str), 100, 100, 0)
+        h.FillN(N, v_p, w)
+        h.Write()
+        
+        h = ROOT.TH1D("perm_p_tf_{0}".format(iperm), "Permutation {0}: {1} transfers".format(iperm, perm_str), 100, 100, 0)
+        h.FillN(N, v_p_tf, w)
+        h.Write()
+        
+        h = ROOT.TH1D("perm_p_me_{0}".format(iperm), "Permutation {0}: {1} matrix element".format(iperm, perm_str), 100, 10, 30)
+        h.FillN(N, v_p_me, w)
+        h.Write()
+    #of.Write()
+    of.Close()
 
 def add_obj(mem, typ, **kwargs):
 
@@ -94,7 +126,10 @@ CvectorPSVar = getattr(ROOT, "std::vector<MEM::PSVar::PSVar>")
 vars_to_integrate   = CvectorPSVar()
 vars_to_marginalize = CvectorPSVar()
 r = mem.run(MEM.FinalState.LL, MEM.Hypothesis.TTH, vars_to_integrate, vars_to_marginalize, 1000)
+
 print "tth", r.p
 r = mem.run(MEM.FinalState.LL, MEM.Hypothesis.TTBB, vars_to_integrate, vars_to_marginalize, 1000)
+save_perm_hists("out_tth.root", r)
 print "ttbb", r.p
+save_perm_hists("out_ttjets.root", r)
 mem.next_event()

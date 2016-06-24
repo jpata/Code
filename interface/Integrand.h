@@ -292,7 +292,7 @@ class Integrand {
   size_t this_perm;
 
   // counts how many times the TF was 0
-  size_t tf_zero;
+  unsigned long long tf_zero;
 
   std::vector<double> perm_const_assumption;
   std::vector<double> perm_btag_assumption;

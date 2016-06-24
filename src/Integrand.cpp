@@ -60,6 +60,7 @@ MEM::Integrand::Integrand(int debug, const MEMConfig &config)
   this_perm = 0;
   n_perm_max = 0;
   prefit_code = 0;
+  tf_zero = 0;
   comparator = CompPerm();
 
   // init PDF set

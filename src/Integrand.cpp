@@ -990,7 +990,10 @@ void MEM::Integrand::do_integration(unsigned int npar, double *xL, double *xU,
           n_max_calls);
       ig2->SetFunction(toIntegrate);
       double n_prob = ig2->Integral(xL, xU);
-
+      if (TMath::IsNaN(n_prob)) {
+        LOG(ERROR) << "Integral() returned a NaN...";
+      }
+      
       LOG(DEBUG) << "Permutation num. " << this->this_perm
                  << " returned p=" << n_prob;
 
@@ -1006,7 +1009,7 @@ void MEM::Integrand::do_integration(unsigned int npar, double *xL, double *xU,
     double p_err = TMath::Power(ig2->Error(), 2.);
     double c2 = ig2->ChiSqr();
     if (TMath::IsNaN(p)) {
-      LOG(ERROR) << "\tIntegral() returned a NaN...";
+      LOG(ERROR) << "Integral() returned a NaN...";
       p = 0.;
       p_err = 0.;
       c2 = 99.;
@@ -1017,7 +1020,6 @@ void MEM::Integrand::do_integration(unsigned int npar, double *xL, double *xU,
     chi2 += c2;
   }  // perm_int
 
-  cout << prob << endl;
   return;
 }
 //
@@ -1625,17 +1627,19 @@ double MEM::Integrand::Eval(const double *x) {
        ++n_perm) {
     // Filter this permutation if doing permutation sum _outside_ the integral
     // or if dealing with prefit
-    if (cfg.perm_int) {
-      if (n_perm != this->this_perm) continue;
+    if (cfg.perm_int && n_perm != this->this_perm) {
+      continue;
     }
 
     // filter this permutation if doing permutation filtering
     if (cfg.do_perm_filtering || (cfg.do_prefit && prefit_step == 2)) {
-      if (!is_in(perm_pruned, n_perm)) continue;
+      if (!is_in(perm_pruned, n_perm)) {
+        continue;
+      }
     }
 
-    double p0 = probability(x, n_perm);
-
+    const double p0 = probability(x, n_perm);
+    
     // QUESTION: what is this perm_const_assumption?
     double p1 = cfg.int_code > 0 ? perm_const_assumption[n_perm] : 1.0;
     DVLOG(2) << "Permutation #" << n_perm << " => p = (" << p0 << "*" << p1
@@ -1646,15 +1650,9 @@ double MEM::Integrand::Eval(const double *x) {
 
     p += (p0 * p1);
   }  // loop over permutations
-  //
-  //  if (cfg.do_minimize || (cfg.do_prefit && prefit_step < 2)) {
-  //    if (p > 0.)
-  //      p = -TMath::Log(p);
-  //    else
-  //      p = numeric_limits<double>::max();
-  //  }
 
-  ++(const_cast<Integrand *>(this)->n_calls);
+
+  this->n_calls++;
 
   if (TMath::IsNaN(p)) {
     LOG(ERROR) << "Eval() returned a NaN";
@@ -1861,7 +1859,7 @@ int MEM::Integrand::create_PS_LH(MEM::PS &ps, const double *x,
     LV lv_bbar = ps.lv(PSPart::bbar);
     if (lv_b.Pt() < 0. || lv_bbar.Pt() < 0. || deltaR(lv_b, lv_bbar) < 0.3) {
       accept = -1;
-      LOG(INFO) << "\tSkip this PS because of collinearity: [" << lv_b.Pt()
+      DVLOG(2) << "Skip this PS because of collinearity: [" << lv_b.Pt()
                 << ", " << lv_bbar.Pt() << ", " << deltaR(lv_b, lv_bbar) << "]";
     }
   }
@@ -2707,9 +2705,10 @@ double MEM::Integrand::scattering(const LV &top, const LV &atop, const LV &b1,
   const LV g1(0.0, 0.0, (E + Pz) / 2., (E + Pz) / 2.);
   const LV g2(0.0, 0.0, -(E - Pz) / 2., (E - Pz) / 2.);
 
-  // phase space point
+   // phase space point
   double *ps = 0;
   int cur_proc_id = -1;
+
   // call OpenLoops functions
   if (hypo == Hypothesis::TTH) {
     if (has_rad) {
@@ -2723,9 +2722,11 @@ double MEM::Integrand::scattering(const LV &top, const LV &atop, const LV &b1,
     if (has_rad) {
       ps = get_phase_space({g1, g2, t, tx, b, bx, rad});
       cur_proc_id = processes.at(Process::TTBBj);
+
     } else {
       ps = get_phase_space({g1, g2, t, tx, b, bx});
       cur_proc_id = processes.at(Process::TTBB);
+
     }
   } else {
     throw std::runtime_error("Undefined hypo");

@@ -7,7 +7,7 @@ using namespace MEM;
 double JetLikelihood::calcProbability(
     MEM::JetInterpretation::JetInterpretation hypo1,
     MEM::JetInterpretation::JetInterpretation hypo2,
-    unsigned int nhypo1,
+    unsigned long nhypo1,
     vector<unsigned int>& outBestPerm
     ) {
     vector<unsigned int> perm_index_copy;

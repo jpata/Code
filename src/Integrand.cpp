@@ -969,13 +969,15 @@ void MEM::Integrand::do_integration(unsigned int npar, double *xL, double *xU,
   ROOT::Math::Functor toIntegrate(this, &MEM::Integrand::Eval, npar);
   ig2->SetFunction(toIntegrate);
 
-  for (std::size_t n_perm = 0; n_perm < perm_indexes_assumption.size();
-       ++n_perm) {
-    this->permutations.push_back(n_perm);
-    this->permutation_probas.push_back(vector<double>());
-    this->permutation_probas_constants.push_back(vector<double>());
-    this->permutation_probas_transfer.push_back(vector<double>());
-    this->permutation_probas_me.push_back(vector<double>());
+  if (cfg.save_permutations) {
+    for (std::size_t n_perm = 0; n_perm < perm_indexes_assumption.size();
+         ++n_perm) {
+      this->permutations.push_back(n_perm);
+      this->permutation_probas.push_back(vector<double>());
+      this->permutation_probas_constants.push_back(vector<double>());
+      this->permutation_probas_transfer.push_back(vector<double>());
+      this->permutation_probas_me.push_back(vector<double>());
+    }
   }
 
   // do the integral permutation by permutation
@@ -1646,7 +1648,9 @@ double MEM::Integrand::Eval(const double *x) {
              << ") = " << (p0 * p1) << endl
              << "P --> " << p << " + " << (p0 * p1) << endl;
 
-    this->permutation_probas.at(n_perm).push_back(p0 * p1);
+    if (cfg.save_permutations) {
+      this->permutation_probas.at(n_perm).push_back(p0 * p1);
+    }
 
     p += (p0 * p1);
   }  // loop over permutations
@@ -2287,15 +2291,19 @@ double MEM::Integrand::probability(const double *x, const std::size_t n_perm) {
   }
 
   const auto p_const = constants();
-  this->permutation_probas_constants.at(n_perm).push_back(p_const);
 
   const auto p_tf = transfer(ps, perm_indexes_assumption[n_perm], accept);
-  this->permutation_probas_transfer.at(n_perm).push_back(p_tf);
+  if (cfg.save_permutations) {
+    this->permutation_probas_constants.at(n_perm).push_back(p_const);
+    this->permutation_probas_transfer.at(n_perm).push_back(p_tf);
+  }
 
   // Skip ME calc if transfer function is 0
   if (p_tf == 0) {
     this->tf_zero += 1;
-    this->permutation_probas_me.at(n_perm).push_back(0.0);
+    if (cfg.save_permutations) {
+      this->permutation_probas_me.at(n_perm).push_back(0.0);
+    }
     return 0;
   }
   // if (cfg.do_prefit > 1 && prefit_step == 0) return p;
@@ -2308,8 +2316,9 @@ double MEM::Integrand::probability(const double *x, const std::size_t n_perm) {
   }
 
   const auto p_mat = matrix(ps);
-  this->permutation_probas_me.at(n_perm).push_back(p_mat);
-
+  if (cfg.save_permutations) {
+    this->permutation_probas_me.at(n_perm).push_back(p_mat);
+  }
   p = p_const * p_tf * p_mat;
   return p;
 }

@@ -648,6 +648,7 @@ MEM::MEMConfig::MEMConfig(int nmc, double ab, double re, int ic, int pi,
   perm_filtering_rel = permrel;
   do_prefit = prefit;
   max_permutations = _max_permutations;
+  save_permutations = false;
 }
 
 void MEM::MEMConfig::defaultCfg(float nCallsMultiplier) {

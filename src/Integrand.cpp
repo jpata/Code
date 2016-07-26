@@ -687,6 +687,7 @@ MEM::MEMOutput MEM::Integrand::run(const MEM::FinalState::FinalState f,
   out.permutation_probas_constants = this->permutation_probas_constants;
   out.permutation_probas_transfer = this->permutation_probas_transfer;
   out.permutation_probas_me = this->permutation_probas_me;
+  out.permutation_sum = this->permutation_sum;
 
   LOG(DEBUG) << "Integration took " << (double)out.time / (double)n_calls
              << " ms/point";
@@ -733,12 +734,15 @@ void MEM::Integrand::next_event() {
   perm_btag_jj_assumption.clear();
   perm_btag_cc_assumption.clear();
   perm_tmpval_assumption.clear();
+  
   permutations.clear();
+  permutation_sum.clear();
   permutation_probas.clear();
   permutation_probas_constants.clear();
   permutation_probas_transfer.clear();
   permutation_probas_me.clear();
   perm_pruned.clear();
+  
   map_to_var.clear();
   map_to_part.clear();
   DVLOG(1) << "Integrand::next_event(): END";
@@ -763,7 +767,15 @@ void MEM::Integrand::next_hypo() {
   perm_btag_jj_assumption.clear();
   perm_btag_cc_assumption.clear();
   perm_tmpval_assumption.clear();
+  
+  permutations.clear();
+  permutation_sum.clear();
+  permutation_probas.clear();
+  permutation_probas_constants.clear();
+  permutation_probas_transfer.clear();
+  permutation_probas_me.clear();
   perm_pruned.clear();
+  
   map_to_var.clear();
   map_to_part.clear();
   prefit_step = 0;
@@ -969,13 +981,15 @@ void MEM::Integrand::do_integration(unsigned int npar, double *xL, double *xU,
   ROOT::Math::Functor toIntegrate(this, &MEM::Integrand::Eval, npar);
   ig2->SetFunction(toIntegrate);
 
-  for (std::size_t n_perm = 0; n_perm < perm_indexes_assumption.size();
-       ++n_perm) {
-    this->permutations.push_back(n_perm);
-    this->permutation_probas.push_back(vector<double>());
-    this->permutation_probas_constants.push_back(vector<double>());
-    this->permutation_probas_transfer.push_back(vector<double>());
-    this->permutation_probas_me.push_back(vector<double>());
+  if (cfg.save_permutations) {
+    for (std::size_t n_perm = 0; n_perm < perm_indexes_assumption.size();
+         ++n_perm) {
+      this->permutations.push_back(n_perm);
+      this->permutation_probas.push_back(vector<double>());
+      this->permutation_probas_constants.push_back(vector<double>());
+      this->permutation_probas_transfer.push_back(vector<double>());
+      this->permutation_probas_me.push_back(vector<double>());
+    }
   }
 
   // do the integral permutation by permutation
@@ -990,6 +1004,10 @@ void MEM::Integrand::do_integration(unsigned int npar, double *xL, double *xU,
           n_max_calls);
       ig2->SetFunction(toIntegrate);
       double n_prob = ig2->Integral(xL, xU);
+      if (cfg.save_permutations) {
+          this->permutation_sum.push_back(n_prob);
+      }
+      
       if (TMath::IsNaN(n_prob)) {
         LOG(ERROR) << "Integral() returned a NaN...";
       }
@@ -1646,7 +1664,9 @@ double MEM::Integrand::Eval(const double *x) {
              << ") = " << (p0 * p1) << endl
              << "P --> " << p << " + " << (p0 * p1) << endl;
 
-    this->permutation_probas.at(n_perm).push_back(p0 * p1);
+    if (cfg.save_permutations) {
+      this->permutation_probas.at(n_perm).push_back(p0 * p1);
+    }
 
     p += (p0 * p1);
   }  // loop over permutations
@@ -2287,15 +2307,19 @@ double MEM::Integrand::probability(const double *x, const std::size_t n_perm) {
   }
 
   const auto p_const = constants();
-  this->permutation_probas_constants.at(n_perm).push_back(p_const);
 
   const auto p_tf = transfer(ps, perm_indexes_assumption[n_perm], accept);
-  this->permutation_probas_transfer.at(n_perm).push_back(p_tf);
+  if (cfg.save_permutations) {
+    this->permutation_probas_constants.at(n_perm).push_back(p_const);
+    this->permutation_probas_transfer.at(n_perm).push_back(p_tf);
+  }
 
   // Skip ME calc if transfer function is 0
   if (p_tf == 0) {
     this->tf_zero += 1;
-    this->permutation_probas_me.at(n_perm).push_back(0.0);
+    if (cfg.save_permutations) {
+      this->permutation_probas_me.at(n_perm).push_back(0.0);
+    }
     return 0;
   }
   // if (cfg.do_prefit > 1 && prefit_step == 0) return p;
@@ -2308,8 +2332,9 @@ double MEM::Integrand::probability(const double *x, const std::size_t n_perm) {
   }
 
   const auto p_mat = matrix(ps);
-  this->permutation_probas_me.at(n_perm).push_back(p_mat);
-
+  if (cfg.save_permutations) {
+    this->permutation_probas_me.at(n_perm).push_back(p_mat);
+  }
   p = p_const * p_tf * p_mat;
   return p;
 }

@@ -611,6 +611,7 @@ struct MEMConfig {
   std::map<std::pair<TFType::TFType, int>, TF1*> tf_map;
 
   std::map<DistributionType::DistributionType, TH3D*> btag_pdfs;
+  bool save_permutations;
 };
 
 class MEMOutput {
@@ -633,6 +634,7 @@ class MEMOutput {
 
   vector<size_t> permutations;
   vector<vector<int>> permutation_indexes;
+  vector<double> permutation_sum;
   vector<vector<double>> permutation_probas;
   vector<vector<double>> permutation_probas_constants;
   vector<vector<double>> permutation_probas_transfer;

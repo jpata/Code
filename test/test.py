@@ -8,6 +8,7 @@ import math
 
 cfg = ROOT.MEM.MEMConfig()
 cfg.defaultCfg()
+cfg.save_permutations = True
 cfg.transfer_function_method = MEM.TFMethod.Builtin
 #cfg.int_code = sum([getattr(MEM.IntegrandType, x) for x in ["Jacobian", "Transfer", "ScattAmpl", "DecayAmpl"]])
 #mem = MEM.Integrand(MEM.output+MEM.input+MEM.init+MEM.init_more+MEM.integration, cfg)

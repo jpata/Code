@@ -634,6 +634,7 @@ class MEMOutput {
 
   vector<size_t> permutations;
   vector<vector<int>> permutation_indexes;
+  vector<double> permutation_sum;
   vector<vector<double>> permutation_probas;
   vector<vector<double>> permutation_probas_constants;
   vector<vector<double>> permutation_probas_transfer;

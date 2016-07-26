@@ -687,6 +687,7 @@ MEM::MEMOutput MEM::Integrand::run(const MEM::FinalState::FinalState f,
   out.permutation_probas_constants = this->permutation_probas_constants;
   out.permutation_probas_transfer = this->permutation_probas_transfer;
   out.permutation_probas_me = this->permutation_probas_me;
+  out.permutation_sum = this->permutation_sum;
 
   LOG(DEBUG) << "Integration took " << (double)out.time / (double)n_calls
              << " ms/point";
@@ -733,12 +734,15 @@ void MEM::Integrand::next_event() {
   perm_btag_jj_assumption.clear();
   perm_btag_cc_assumption.clear();
   perm_tmpval_assumption.clear();
+  
   permutations.clear();
+  permutation_sum.clear();
   permutation_probas.clear();
   permutation_probas_constants.clear();
   permutation_probas_transfer.clear();
   permutation_probas_me.clear();
   perm_pruned.clear();
+  
   map_to_var.clear();
   map_to_part.clear();
   DVLOG(1) << "Integrand::next_event(): END";
@@ -763,7 +767,15 @@ void MEM::Integrand::next_hypo() {
   perm_btag_jj_assumption.clear();
   perm_btag_cc_assumption.clear();
   perm_tmpval_assumption.clear();
+  
+  permutations.clear();
+  permutation_sum.clear();
+  permutation_probas.clear();
+  permutation_probas_constants.clear();
+  permutation_probas_transfer.clear();
+  permutation_probas_me.clear();
   perm_pruned.clear();
+  
   map_to_var.clear();
   map_to_part.clear();
   prefit_step = 0;
@@ -992,6 +1004,10 @@ void MEM::Integrand::do_integration(unsigned int npar, double *xL, double *xU,
           n_max_calls);
       ig2->SetFunction(toIntegrate);
       double n_prob = ig2->Integral(xL, xU);
+      if (cfg.save_permutations) {
+          this->permutation_sum.push_back(n_prob);
+      }
+      
       if (TMath::IsNaN(n_prob)) {
         LOG(ERROR) << "Integral() returned a NaN...";
       }

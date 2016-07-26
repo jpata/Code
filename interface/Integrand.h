@@ -304,6 +304,7 @@ class Integrand {
   std::vector<double> perm_btag_jj_assumption;
 
   vector<unsigned long> permutations;
+  vector<double> permutation_sum;
   vector<vector<double>> permutation_probas;
   vector<vector<double>> permutation_probas_constants;
   vector<vector<double>> permutation_probas_transfer;

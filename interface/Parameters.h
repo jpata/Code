@@ -1,9 +1,10 @@
 #ifndef PARAMETERS_H
 #define PARAMETERS_H
 
+//comment or uncomment this
 //#define DEBUG_MODE
 
-// needed for easylogging
+// needed for easylogging, which looks for NDEBUG
 #ifndef DEBUG_MODE
 #define NDEBUG
 #endif

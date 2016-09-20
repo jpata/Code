@@ -98,24 +98,10 @@ MEM::Integrand::Integrand(int debug, const MEMConfig &config)
                   "%datetime %level %msg");
   el::Loggers::reconfigureLogger("default", defaultConf);
   int verbose_level = 0;
-  if (debug & DebugVerbosity::init) {
-    verbose_level = 1;
-  }
-  if (debug & DebugVerbosity::init_more) {
-    verbose_level = 2;
-  }
-  if (debug & DebugVerbosity::event) {
-    verbose_level = 3;
-  }
-  if (debug & DebugVerbosity::integration) {
-    verbose_level = 4;
-  }
-  el::Loggers::setVerboseLevel(verbose_level);
+  el::Loggers::setVerboseLevel(debug);
 }
 
 MEM::Integrand::~Integrand() {
-  if (debug_code & DebugVerbosity::init)
-    cout << "Integrand::~Integrand()" << endl;
   obs_jets.clear();
   obs_leptons.clear();
   obs_mets.clear();
@@ -231,7 +217,7 @@ void MEM::Integrand::init(const MEM::FinalState::FinalState f,
   } while (next_permutation(perm_index_copy.begin(), perm_index_copy.end(),
                             comparator));
 
-  DVLOG(1) << "Maximum of " << n_perm_max << " permutation(s) considered";
+  VLOG(1) << "Maximum of " << n_perm_max << " permutation(s) considered";
 
   // are we looking at decays of top and higgs?
   const int unstable =
@@ -265,9 +251,9 @@ void MEM::Integrand::init(const MEM::FinalState::FinalState f,
       // MET Px/Py
       - 2 * (obs_mets.size() == 0);
 
-  DVLOG(1) << "Total of " << num_of_vars
+  VLOG(1) << "Total of " << num_of_vars
            << " unknowns (does not take into account lost jets)";
-  DVLOG(1) << "Integration code: " << cfg.int_code;
+  VLOG(1) << "Integration code: " << cfg.int_code;
 
   return;
 }
@@ -288,7 +274,7 @@ vector<int> MEM::Integrand::get_permutation(size_t n) {
         for (auto ind : perm_index_copy) {
           os << ind << " ";
         }
-        DVLOG(3) << "\tperm. " << n_perm << ": [ " << os.str() << " ]";
+        VLOG(3) << "\tperm. " << n_perm << ": [ " << os.str() << " ]";
       }
 #endif
       return perm_index_copy;
@@ -390,12 +376,12 @@ void MEM::Integrand::get_edges(double *lim,
 
 #ifdef DEBUG_MODE
   if (VLOG_IS_ON(2)) {
-    DVLOG(2) << "\tIntegrand::get_edges(): SUMMARY" << endl;
+    VLOG(2) << "\tIntegrand::get_edges(): SUMMARY" << endl;
     ostringstream os;
     for (size_t i = 0; i < nvar; ++i) {
       os << lim[i] << " ";
     }
-    DVLOG(2) << (edge ? "\t\tH" : "\t\tL") << " edges: [ " << os.str() << "]";
+    VLOG(2) << (edge ? "\t\tH" : "\t\tL") << " edges: [ " << os.str() << "]";
   }
 #endif
 }
@@ -538,10 +524,11 @@ void MEM::Integrand::push_back_object(const LV &p4,
       break;
   }
 
-  if (debug_code & DebugVerbosity::init_more) {
-    cout << "Integrand::push_back_object(): SUMMARY" << endl;
-    obj->print(cout);
-  }
+#ifdef DEBUG_MODE
+    ostringstream os;
+    obj->print(os);
+    VLOG(2) << "Integrand::push_back_object(): SUMMARY " << os.str() << endl;
+#endif
 
   return;
 }
@@ -620,9 +607,6 @@ MEM::MEMOutput MEM::Integrand::run(const MEM::FinalState::FinalState f,
                                    const std::vector<MEM::PSVar::PSVar> missed,
                                    const std::vector<MEM::PSVar::PSVar> any,
                                    int ncalls) {
-  if (debug_code & DebugVerbosity::init) {
-    cout << "Integrand::run(): START" << endl;
-  }
 
   // the output for this evaluation
   MEMOutput out;
@@ -648,18 +632,10 @@ MEM::MEMOutput MEM::Integrand::run(const MEM::FinalState::FinalState f,
                     : cfg.calls[static_cast<std::size_t>(fs)]
                                [static_cast<std::size_t>(h)][list.size() / 2];
 
-  if (debug_code & DebugVerbosity::init) {
-    cout << "n_max_calls=" << n_max_calls << endl;
-  }
 
   // create integrator
   ig2 = new ROOT::Math::GSLMCIntegrator(ROOT::Math::IntegrationMultiDim::kVEGAS,
                                         cfg.abs, cfg.rel, n_max_calls);
-
-  if (debug_code & DebugVerbosity::init_more) {
-    ig2->Options().Print(std::cout);
-    ig2->ExtraOptions()->Print(std::cout);
-  }
 
   // start the clock....
   auto t1 = high_resolution_clock::now();
@@ -691,13 +667,11 @@ MEM::MEMOutput MEM::Integrand::run(const MEM::FinalState::FinalState f,
   LOG(DEBUG) << "Integration took " << (double)out.time / (double)n_calls
              << " ms/point";
 
-  if (debug_code & DebugVerbosity::output) {
-    ostringstream os;
-    out.print(os);
-    LOG(INFO) << endl << os.str();
-  }
+  ostringstream os;
+  out.print(os);
+  LOG(INFO) << endl << os.str();
 
-  DVLOG(1) << "Integrand::run(): DONE in "
+  VLOG(1) << "Integrand::run(): DONE in "
            << static_cast<int>(duration_cast<milliseconds>(t2 - t0).count()) *
                   0.001
            << " sec";
@@ -708,7 +682,7 @@ MEM::MEMOutput MEM::Integrand::run(const MEM::FinalState::FinalState f,
   return out;
 }
 void MEM::Integrand::next_event() {
-  DVLOG(1) << "Integrand::next_event(): START";
+  VLOG(1) << "Integrand::next_event(): START";
   obs_jets.clear();
   obs_leptons.clear();
   obs_mets.clear();
@@ -721,7 +695,6 @@ void MEM::Integrand::next_event() {
   n_calls = 0;
   n_skip = 0;
   tf_zero = 0;
-  // cfg.is_default = true;
   n_perm_max = 0;
   prefit_code = 0;
   perm_index.clear();
@@ -741,11 +714,11 @@ void MEM::Integrand::next_event() {
   perm_pruned.clear();
   map_to_var.clear();
   map_to_part.clear();
-  DVLOG(1) << "Integrand::next_event(): END";
+  VLOG(1) << "Integrand::next_event(): END";
 }
 
 void MEM::Integrand::next_hypo() {
-  DVLOG(1) << "Integrand::next_hypo(): START";
+  VLOG(1) << "Integrand::next_hypo(): START";
   if (ig2 != nullptr) {
     delete ig2;
     ig2 = nullptr;
@@ -771,15 +744,11 @@ void MEM::Integrand::next_hypo() {
   n_skip = 0;
   n_perm_max = 0;
   prefit_code = 0;
-  // cfg.is_default = true;
-  if (debug_code & DebugVerbosity::init) {
-    cout << "Integrand::next_hypo(): END" << endl;
-  }
 }
 
 bool MEM::Integrand::test_assumption(const size_t &lost) {
   if ((obs_jets.size() + lost) < naive_jet_counting) {
-    DVLOG(1) << "\t This assumption cannot be made: too few jets";
+    VLOG(1) << "\t This assumption cannot be made: too few jets";
     return false;
   }
   return true;
@@ -839,7 +808,7 @@ void MEM::Integrand::make_assumption(
   for (std::size_t n_perm = 0; n_perm < n_perm_max; ++n_perm) {
     auto perm = get_permutation(n_perm);
     if (perm.size() == 0) continue;
-    DVLOG(3) << "considering permutation " << vec_to_string(perm);
+    VLOG(3) << "considering permutation " << vec_to_string(perm);
 
     // - *it gives the integ. var. position in PSVar
     // - provide first cosTheta: then *it-1 gives the position of E
@@ -878,7 +847,7 @@ void MEM::Integrand::make_assumption(
 
   LOG(DEBUG) << "done filtering permutations";
 
-  DVLOG(1) << perms_to_string(perm_indexes_assumption, perm_const_assumption);
+  VLOG(1) << perms_to_string(perm_indexes_assumption, perm_const_assumption);
   LOG(INFO) << "A total of " << perm_indexes_assumption.size()
             << " permutations have been considered for this assumption";
   if (cfg.max_permutations > 0 &&
@@ -1187,7 +1156,7 @@ bool MEM::Integrand::accept_perm_btagged(const vector<int> &perm) const {
       if (BTAG_isSet && BTAG_val < 0.5 &&
           (!PDGID_isSet || (PDGID_isSet && PDGID_val == 0))) {
         if (debug_code & DebugVerbosity::init_more) {
-          cout << "\t\tDiscard permutation: obs_jets[ perm[" << ind
+          VLOG(2) << "Discard permutation: obs_jets[ perm[" << ind
                << "] ] has BTAG=" << BTAG_val << endl;
         }
         return false;
@@ -1308,7 +1277,7 @@ bool MEM::Integrand::accept_perm_bbbarsymmetry(const vector<int> &perm) const {
     }
 
     if (asymmetric_part && symmetric_part) {
-      VLOG(2) << "\t\tDiscard permutation: a (B,BBAR) swap has been found";
+      VLOG(2) << "Discard permutation: a (B,BBAR) swap has been found";
       return false;
     }
   }
@@ -1376,7 +1345,7 @@ bool MEM::Integrand::accept_perm(
       // Require all b quarks to be matched to tagged jets
       case Permutations::BTagged:
         if (!accept_perm_btagged(perm)) {
-          DVLOG(3) << "Permutation failed BTagged";
+          VLOG(3) << "Permutation failed BTagged";
           return false;
         }
         break;
@@ -1384,7 +1353,7 @@ bool MEM::Integrand::accept_perm(
       // Require all non-b quarks to be matched to untagged jets
       case Permutations::QUntagged:
         if (!accept_perm_quntagged(perm)) {
-          DVLOG(3) << "Permutation failed QUntagged";
+          VLOG(3) << "Permutation failed QUntagged";
           return false;
         }
         break;
@@ -1393,21 +1362,21 @@ bool MEM::Integrand::accept_perm(
       // differing from perm by swapping the W quarks
       case Permutations::QQbarSymmetry:
         if (!accept_perm_qqbarsymmetry(perm)) {
-          DVLOG(3) << "Permutation failed QQbarSymmetry";
+          VLOG(3) << "Permutation failed QQbarSymmetry";
           return false;
         }
         break;
 
       case Permutations::BBbarSymmetry:
         if (!accept_perm_bbbarsymmetry(perm)) {
-          DVLOG(3) << "Permutation failed BBbarSymmetry";
+          VLOG(3) << "Permutation failed BBbarSymmetry";
           return false;
         }
         break;
 
       case Permutations::QQbarBBbarSymmetry:
         if (!accept_perm_qqbarbbbarsymmetry(perm)) {
-          DVLOG(3) << "Permutation failed QQbarBBbarSymmetry";
+          VLOG(3) << "Permutation failed QQbarBBbarSymmetry";
           return false;
         }
         break;
@@ -1530,14 +1499,14 @@ bool MEM::Integrand::accept_perm(
         break;
     }
   }
-  DVLOG(2) << "Permutation " << vec_to_string(perm) << " accepted";
+  VLOG(2) << "Permutation " << vec_to_string(perm) << " accepted";
   ;
   return true;
 }
 
 std::map<MEM::PermConstants::PermConstants, double>
 MEM::Integrand::get_permutation_constants(const vector<int> &perm) const {
-  DVLOG(2) << "Integrand::get_permutation_constants(): START";
+  VLOG(2) << "Integrand::get_permutation_constants(): START";
 
   std::map<PermConstants::PermConstants, double> out;
 
@@ -1557,7 +1526,7 @@ MEM::Integrand::get_permutation_constants(const vector<int> &perm) const {
       } else {
         DeltaE = cfg.emax - MQ;
       }
-      DVLOG(2) << "dE_q = " << DeltaE << " GeV";
+      VLOG(2) << "dE_q = " << DeltaE << " GeV";
       p *= DeltaE;
 
       // PSVar::E_b
@@ -1605,7 +1574,7 @@ MEM::Integrand::get_permutation_constants(const vector<int> &perm) const {
         } else {
           DeltaE = cfg.emax - MB;
         }
-        DVLOG(2) << "dE_bbar = " << DeltaE << " GeV";
+        VLOG(2) << "dE_bbar = " << DeltaE << " GeV";
         p *= DeltaE;
       }
       break;
@@ -1620,7 +1589,7 @@ MEM::Integrand::get_permutation_constants(const vector<int> &perm) const {
 }
 
 double MEM::Integrand::Eval(const double *x) {
-  DVLOG(2) << "Integrand::Eval(): START Function call num. " << n_calls << endl;
+  VLOG(2) << "Integrand::Eval(): START Function call num. " << n_calls << endl;
   double p{0.};
 
   for (std::size_t n_perm = 0; n_perm < perm_indexes_assumption.size();
@@ -1642,7 +1611,7 @@ double MEM::Integrand::Eval(const double *x) {
     
     // QUESTION: what is this perm_const_assumption?
     double p1 = cfg.int_code > 0 ? perm_const_assumption[n_perm] : 1.0;
-    DVLOG(2) << "Permutation #" << n_perm << " => p = (" << p0 << "*" << p1
+    VLOG(2) << "Permutation #" << n_perm << " => p = (" << p0 << "*" << p1
              << ") = " << (p0 * p1) << endl
              << "P --> " << p << " + " << (p0 * p1) << endl;
 
@@ -1664,7 +1633,7 @@ double MEM::Integrand::Eval(const double *x) {
 
 int MEM::Integrand::create_PS(MEM::PS &ps, const double *x,
                               const vector<int> &perm) const {
-  DVLOG(2) << "Integrand::create_PS(): START";
+  VLOG(2) << "Integrand::create_PS(): START";
 
   switch (fs) {
     case FinalState::LH:
@@ -1688,7 +1657,7 @@ int MEM::Integrand::create_PS(MEM::PS &ps, const double *x,
 
 int MEM::Integrand::create_PS_LH(MEM::PS &ps, const double *x,
                                  const vector<int> &perm) const {
-  DVLOG(2) << "Integrand::create_PS_LH(): START";
+  VLOG(2) << "Integrand::create_PS_LH(): START";
 
   // corrupted phase space
   int accept{0};
@@ -1859,7 +1828,7 @@ int MEM::Integrand::create_PS_LH(MEM::PS &ps, const double *x,
     LV lv_bbar = ps.lv(PSPart::bbar);
     if (lv_b.Pt() < 0. || lv_bbar.Pt() < 0. || deltaR(lv_b, lv_bbar) < 0.3) {
       accept = -1;
-      DVLOG(2) << "Skip this PS because of collinearity: [" << lv_b.Pt()
+      VLOG(2) << "Skip this PS because of collinearity: [" << lv_b.Pt()
                 << ", " << lv_bbar.Pt() << ", " << deltaR(lv_b, lv_bbar) << "]";
     }
   }
@@ -1880,22 +1849,22 @@ void MEM::Integrand::extend_PS(MEM::PS &ps, const MEM::PSPart::PSPart &part,
 
 #ifdef DEBUG_MODE
   if (VLOG_IS_ON(3)) {
-    DVLOG(3) << "\t\tExtend phase-space point: adding variable "
+    VLOG(3) << "\t\tExtend phase-space point: adding variable "
              << static_cast<size_t>(part);
     if (map_to_var.find(var_E) != map_to_var.end()) {
-      DVLOG(3) << "\t\tE   = x[" << map_to_var.find(var_E)->second
+      VLOG(3) << "\t\tE   = x[" << map_to_var.find(var_E)->second
                << "] = " << E << " GeV";
     } else {
-      DVLOG(3) << "\t\tE   = SOLVE() = " << E << " GeV";
+      VLOG(3) << "\t\tE   = SOLVE() = " << E << " GeV";
     }
     if (map_to_var.find(var_cos) != map_to_var.end() &&
         map_to_var.find(var_phi) != map_to_var.end()) {
-      DVLOG(3) << "\t\tcos = x[" << map_to_var.find(var_cos)->second
+      VLOG(3) << "\t\tcos = x[" << map_to_var.find(var_cos)->second
                << "] = " << TMath::Cos(dir.Theta());
-      DVLOG(3) << "\t\tphi = x[" << map_to_var.find(var_phi)->second
+      VLOG(3) << "\t\tphi = x[" << map_to_var.find(var_phi)->second
                << "] = " << dir.Phi();
     } else {
-      DVLOG(3) << "\t\tUsing obs[" << pos << "]";
+      VLOG(3) << "\t\tUsing obs[" << pos << "]";
     }
   }
 #endif
@@ -1915,7 +1884,7 @@ int MEM::Integrand::create_PS_LL(MEM::PS &ps, const double *x,
                                  const vector<int> &perm) const {
 #ifdef DEBUG_MODE
   if (VLOG_IS_ON(3)) {
-    DVLOG(3) << "\tIntegrand::create_PS_LL(): START";
+    VLOG(3) << "\tIntegrand::create_PS_LL(): START";
   }
 #endif
 
@@ -2046,7 +2015,7 @@ int MEM::Integrand::create_PS_LL(MEM::PS &ps, const double *x,
     LV lv_bbar = ps.lv(PSPart::bbar);
     if (lv_b.Pt() < 0. || lv_bbar.Pt() < 0. || deltaR(lv_b, lv_bbar) < 0.3) {
       accept = -1;
-      DVLOG(2) << "Skip this PS because of collinearity: [" << lv_b.Pt() << ", "
+      VLOG(2) << "Skip this PS because of collinearity: [" << lv_b.Pt() << ", "
                << lv_bbar.Pt() << ", " << deltaR(lv_b, lv_bbar) << "]";
     }
   }
@@ -2221,19 +2190,19 @@ int MEM::Integrand::create_PS_HH(MEM::PS &ps, const double *x,
     LV lv_bbar = ps.lv(PSPart::bbar);
     if (lv_b.Pt() < 0. || lv_bbar.Pt() < 0. || deltaR(lv_b, lv_bbar) < 0.3) {
       accept = -1;
-      DVLOG(2) << "Skip this PS because of collinearity: [" << lv_b.Pt() << ", "
+      VLOG(2) << "Skip this PS because of collinearity: [" << lv_b.Pt() << ", "
                << lv_bbar.Pt() << ", " << deltaR(lv_b, lv_bbar) << "]";
     }
   }
 
-  DVLOG(2) << "Integrand::create_PS_HH(): END";
+  VLOG(2) << "Integrand::create_PS_HH(): END";
 
   return accept;
 }
 
 int MEM::Integrand::create_PS_TTH(MEM::PS &ps, const double *x,
                                   const vector<int> &perm) const {
-  DVLOG(2) << "Integrand::create_PS_TTH(): START";
+  VLOG(2) << "Integrand::create_PS_TTH(): START";
 
   // corrupted phase space
   int accept{0};
@@ -2261,7 +2230,7 @@ int MEM::Integrand::create_PS_TTH(MEM::PS &ps, const double *x,
 }
 
 double MEM::Integrand::probability(const double *x, const std::size_t n_perm) {
-  DVLOG(2) << "Integrand::probability(): START";
+  VLOG(2) << "Integrand::probability(): START";
 
   // the total probability
   double p{1.0};
@@ -2276,12 +2245,12 @@ double MEM::Integrand::probability(const double *x, const std::size_t n_perm) {
   if (accept > 0 && VLOG_IS_ON(2)) {
     ostringstream os;
     ps.print(os);
-    DVLOG(2) << "PS:" << os.str();
+    VLOG(2) << "PS:" << os.str();
   }
 #endif
 
   if (accept < 0) {
-    DVLOG(1) << "CORRUPTED PS (no solution): return 0.";
+    VLOG(1) << "CORRUPTED PS (no solution): return 0.";
     ++(const_cast<Integrand *>(this)->n_skip);
     return 0.;
   }
@@ -2301,7 +2270,7 @@ double MEM::Integrand::probability(const double *x, const std::size_t n_perm) {
   // if (cfg.do_prefit > 1 && prefit_step == 0) return p;
 
   if (cfg.tf_suppress && accept >= cfg.tf_suppress) {
-    DVLOG(1) << "Transfer functions out-of-range " << accept
+    VLOG(1) << "Transfer functions out-of-range " << accept
              << " times: return from this PS before calculatin matrix()"
              << endl;
     return 0.;
@@ -2334,7 +2303,7 @@ double MEM::Integrand::matrix(const PS &ps) const {
   LV lv_bbar = ps.lv(PSPart::bbar);
   LV lv_additional_jet = ps.lv(PSPart::gluon_rad);
 
-  DVLOG(2) << "Filling m..." << endl
+  VLOG(2) << "Filling m..." << endl
            << "Check masses: m(W1)=" << (lv_q1 + lv_qbar1).M() << endl
            << ", m(t1)=" << (lv_q1 + lv_qbar1 + lv_b1).M() << endl
            << ", m(W2)=" << (lv_q2 + lv_qbar2).M() << endl
@@ -2371,8 +2340,8 @@ double MEM::Integrand::matrix_nodecay(const PS &ps) const {
   LV lv_h = lv_b + lv_bbar;
   LV lv_additional_jet = ps.lv(PSPart::gluon_rad);
 
-  DVLOG(2) << "\t\tFilling m...";
-  DVLOG(2) << "\t\tCheck masses: m(t1)=" << lv_t.M()
+  VLOG(2) << "\t\tFilling m...";
+  VLOG(2) << "\t\tCheck masses: m(t1)=" << lv_t.M()
            << ", m(t2)=" << lv_tbar.M() << ", m(h)= " << (lv_b + lv_bbar).M();
 
   LV additional_jet;
@@ -2425,7 +2394,7 @@ double MEM::Integrand::transfer(const PS &ps, const vector<int> &perm,
       // subtract from total pT
       pT_x -= p->second.lv.Px();
       pT_y -= p->second.lv.Py();
-      DVLOG(2) << "\tDealing with a lepton..." << endl
+      VLOG(2) << "\tDealing with a lepton..." << endl
                << "\t\trho_x -= " << obj->p4().Px()
                << ", pT_x -= " << p->second.lv.Px() << endl
                << "\t\trho_y -= " << obj->p4().Py()
@@ -2441,7 +2410,7 @@ double MEM::Integrand::transfer(const PS &ps, const vector<int> &perm,
       // subtract from total pT
       pT_x -= p->second.lv.Px();
       pT_y -= p->second.lv.Py();
-      DVLOG(2) << "Dealing with a neutrino..." << endl
+      VLOG(2) << "Dealing with a neutrino..." << endl
                << "nu_x -= " << p->second.lv.Px()
                << ", pT_x -= " << p->second.lv.Px() << endl
                << "nu_y -= " << p->second.lv.Py()
@@ -2504,7 +2473,7 @@ double MEM::Integrand::transfer(const PS &ps, const vector<int> &perm,
         }
       }
 
-      DVLOG(2) << "\tDealing with a jet..." << endl
+      VLOG(2) << "\tDealing with a jet..." << endl
                << "\t\trho_x -= " << obj->p4().Px()
                << ", pT_x -= " << p->second.lv.Px() << endl
                << "\t\trho_y -= " << obj->p4().Py()
@@ -2515,7 +2484,7 @@ double MEM::Integrand::transfer(const PS &ps, const vector<int> &perm,
                << (e_rec - e_gen) * obj->p4().Py() / obj->p4().P() << endl;
     }  // jet index >= 0
     else {
-      DVLOG(2) << "\tDealing with a missed jet..." << endl
+      VLOG(2) << "\tDealing with a missed jet..." << endl
                << "\t\trho_x -= " << 0 << ", pT_x -= " << p->second.lv.Px()
                << "\t\trho_y -= " << 0 << ", pT_y -= " << p->second.lv.Py()
                << endl;
@@ -2591,7 +2560,7 @@ double MEM::Integrand::transfer(const PS &ps, const vector<int> &perm,
 
 #ifdef DEBUG_MODE
   if (VLOG_IS_ON(3)) {
-    DVLOG(3) << "\tTotal transfer function: " << w << " (" << accept
+    VLOG(3) << "\tTotal transfer function: " << w << " (" << accept
              << " functions are out-of-range by more than " << cfg.tf_offscale
              << " sigmas";
   }
@@ -2666,7 +2635,7 @@ double MEM::Integrand::scattering(const LV &top, const LV &atop, const LV &b1,
     t.Boost(-boostPt);
     tx.Boost(-boostPt);
     rad.Boost(-boostPt);
-    DVLOG(2) << "Boost system along the (x,y) plane: beta = (" << boostPt.Px()
+    VLOG(2) << "Boost system along the (x,y) plane: beta = (" << boostPt.Px()
              << ", " << boostPt.Py() << ", " << boostPt.Pz() << ")" << endl;
   }
 
@@ -2736,10 +2705,10 @@ double MEM::Integrand::scattering(const LV &top, const LV &atop, const LV &b1,
 
 #ifdef DEBUG_MODE
   if (VLOG_IS_ON(3)) {
-    DVLOG(3) << "\t\tTotal (px,py,pz,E) = (" << sum.Px() << "," << sum.Py()
+    VLOG(3) << "\t\tTotal (px,py,pz,E) = (" << sum.Px() << "," << sum.Py()
              << "," << sum.Pz() << "," << sum.E() << ")";
-    DVLOG(3) << "\t\tGluons (x1,x2)     = (" << x1 << "," << x2 << ")";
-    DVLOG(3) << "\t\tM2 (OpenLoops)     = " << M2;
+    VLOG(3) << "\t\tGluons (x1,x2)     = (" << x1 << "," << x2 << ")";
+    VLOG(3) << "\t\tM2 (OpenLoops)     = " << M2;
   }
 #endif
 
@@ -2771,7 +2740,7 @@ double MEM::Integrand::pdf(const double &x1, const double &x2,
 
 #ifdef DEBUG_MODE
   if (VLOG_IS_ON(3)) {
-    DVLOG(3) << "\t\tPDF(x1,Q)*PDF(x2,Q) = " << f1 << "*" << f2;
+    VLOG(3) << "\t\tPDF(x1,Q)*PDF(x2,Q) = " << f1 << "*" << f2;
   }
 #endif
 
@@ -2821,13 +2790,13 @@ double MEM::Integrand::t_decay_amplitude(const TLorentzVector &q,
 
 #ifdef DEBUG_MODE
   if (VLOG_IS_ON(3)) {
-    DVLOG(3) << "\tIntegrand::t_decay_amplitude():";
-    DVLOG(3) << "\t\tBreit-Wigner top = " << BWTOP << " GeV^-2";
-    DVLOG(3) << "\t\tJacobian (Eqbar,Eb) -> (m2_qq, m2_qqb) = " << Jac
+    VLOG(3) << "\tIntegrand::t_decay_amplitude():";
+    VLOG(3) << "\t\tBreit-Wigner top = " << BWTOP << " GeV^-2";
+    VLOG(3) << "\t\tJacobian (Eqbar,Eb) -> (m2_qq, m2_qqb) = " << Jac
              << " GeV";
-    DVLOG(3) << "\t\t|M2|(t->bqq') = " << m2
+    VLOG(3) << "\t\t|M2|(t->bqq') = " << m2
              << (charge_q == 0 ? " (charge symmetrised)" : "");
-    DVLOG(3) << "\t\tTotal = " << p << " GeV^-1";
+    VLOG(3) << "\t\tTotal = " << p << " GeV^-1";
   }
 #endif
 
@@ -2854,14 +2823,14 @@ double MEM::Integrand::H_decay_amplitude(const TLorentzVector &b,
 
 #ifdef DEBUG_MODE
   if (VLOG_IS_ON(3)) {
-    DVLOG(3) << "\tIntegrand::H_decay_amplitude():";
+    VLOG(3) << "\tIntegrand::H_decay_amplitude():";
     if (hypo == Hypothesis::TTH) {
-      DVLOG(3) << "\t\tBreit-Wigner Higgs = " << BWH << " GeV^-2";
-      DVLOG(3) << "\t\tJacobian (Eb,Ebbar) -> (E_b, m2_bb) = " << Jac << " GeV";
-      DVLOG(3) << "\t\t|M2|(t->bqq') = " << m2 << " GeV^2";
-      DVLOG(3) << "\t\tTotal = " << p << " GeV";
+      VLOG(3) << "\t\tBreit-Wigner Higgs = " << BWH << " GeV^-2";
+      VLOG(3) << "\t\tJacobian (Eb,Ebbar) -> (E_b, m2_bb) = " << Jac << " GeV";
+      VLOG(3) << "\t\t|M2|(t->bqq') = " << m2 << " GeV^2";
+      VLOG(3) << "\t\tTotal = " << p << " GeV";
     } else {
-      DVLOG(3) << "\t\tJacobian = " << Jac << " GeV^2";
+      VLOG(3) << "\t\tJacobian = " << Jac << " GeV^2";
     }
   }
 #endif
@@ -2877,7 +2846,7 @@ double MEM::Integrand::solve(const LV &p4_w, const double &DM2, const double &M,
   if (M < 1e-03) {
 #ifdef DEBUG_MODE
     if (VLOG_IS_ON(3)) {
-      DVLOG(3) << "\t\tUse masless formula: " << a << "/(1-" << b
+      VLOG(3) << "\t\tUse masless formula: " << a << "/(1-" << b
                << ")=" << a / (1 - b);
     }
 #endif
@@ -2902,7 +2871,7 @@ double MEM::Integrand::solve(const LV &p4_w, const double &DM2, const double &M,
   if ((a2 + b2 - 1) < 0.) {
 #ifdef DEBUG_MODE
     if (VLOG_IS_ON(3)) {
-      DVLOG(3) << "\t\t(a2 + b2 - 1)<0. return max()";
+      VLOG(3) << "\t\t(a2 + b2 - 1)<0. return max()";
     }
 #endif
     accept = -1;
@@ -2917,7 +2886,7 @@ double MEM::Integrand::solve(const LV &p4_w, const double &DM2, const double &M,
   if (g_p < 1.0) {
 #ifdef DEBUG_MODE
     if (VLOG_IS_ON(3)) {
-      DVLOG(3) << "\t\tg_p=" << g_p << ": return max()";
+      VLOG(3) << "\t\tg_p=" << g_p << ": return max()";
     }
 #endif
     accept = -1;

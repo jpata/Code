@@ -330,6 +330,11 @@ class Integrand {
   // VEGAS integrator
   ROOT::Math::GSLMCIntegrator *ig2;
 
+  // VEGAS integrator options and parameters
+  ROOT::Math::IntegratorMultiDimOptions options;
+  ROOT::Math::IOptions * extraOpt;
+  ROOT::Math::VegasParameters vparam;
+
   // MINUIT2 minimizer
   ROOT::Math::Minimizer *minimizer;
 

@@ -506,8 +506,9 @@ struct CompPerm {
 struct MEMConfig {
   MEMConfig(
       int = 4000,         // num of int points
-      double = 1.e-12,    // absolute tol.
-      double = 1.e-5,     // relative tol.
+      double = 0.0,    // absolute tol. // has no effect on integration
+      double = 0.01,     // relative tol.
+      int = 0,            // two-stage integration
       int = 0,            // int_code
       int = 0,            // =0 <=> Int{ Perm }; =1 <=> Perm{ Int }
       double = 13000.,    // c.o.m. energy
@@ -547,6 +548,7 @@ struct MEMConfig {
   // the VEGAS options
   double rel;
   double abs;
+  int two_stage;
 
   // what to include into the integrand
   int int_code;

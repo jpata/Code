@@ -654,11 +654,21 @@ MEM::MEMOutput MEM::Integrand::run(const MEM::FinalState::FinalState f,
 
   // create integrator
   ig2 = new ROOT::Math::GSLMCIntegrator(ROOT::Math::IntegrationMultiDim::kVEGAS,
-                                        cfg.abs, cfg.rel, n_max_calls);
+                                        cfg.abs, cfg.rel, cfg.two_stage ? n_max_calls/3 : n_max_calls);
 
   if (debug_code & DebugVerbosity::init_more) {
     ig2->Options().Print(std::cout);
     ig2->ExtraOptions()->Print(std::cout);
+  }
+
+  // two-stage integration
+  if(cfg.two_stage){
+    // change integration options for first stage
+    ROOT::Math::IOptions * extraOpt = ig2->ExtraOptions();
+    ROOT::Math::VegasParameters vparam = ROOT::Math::VegasParameters(*extraOpt);
+    vparam.iterations = 3;
+    vparam.verbose = 0; //can make configurable
+    ig2->SetParameters(vparam);
   }
 
   // start the clock....
@@ -1008,6 +1018,33 @@ void MEM::Integrand::do_integration(unsigned int npar, double *xL, double *xU,
     double p = ig2->Integral(xL, xU);
     double p_err = TMath::Power(ig2->Error(), 2.);
     double c2 = ig2->ChiSqr();
+
+    // second run of integral
+    if(cfg.two_stage){
+      ROOT::Math::IntegratorMultiDimOptions options = ig2->Options();
+      options.SetNCalls(n_max_calls*4/3);
+      ig2->SetOptions(options);
+      vparam.iterations = 1;
+      vparam.stage = 1;
+      vparam.verbose = 0; //can make configurable
+      ig2->SetParameters(vparam);
+
+      p = ig2->Integral(xL, xU);
+      p_err = TMath::Power(ig2->Error(), 2.);
+      c2 = ig2->ChiSqr();
+
+      while( TMath::Abs(sqrt(p_err)/p) > cfg.rel ){
+	vparam.stage = 3;
+	ig2->SetParameters(vparam);
+	
+	p = ig2->Integral(xL, xU);
+	p_err = TMath::Power(ig2->Error(), 2.);
+	c2 = ig2->ChiSqr();
+      
+	if(n_calls > 5*n_max_calls) break;
+      }
+    }
+
     if (TMath::IsNaN(p)) {
       LOG(ERROR) << "Integral() returned a NaN...";
       p = 0.;
@@ -1609,6 +1646,57 @@ MEM::Integrand::get_permutation_constants(const vector<int> &perm) const {
         p *= DeltaE;
       }
       break;
+    case FinalState::HH:
+      // PSVar::E_q1
+      pos = map_to_part.find(PSPart::q1)->second;
+      if( perm[ pos ]>=0 ){
+	obj = obs_jets[ perm[pos] ];
+	DeltaE = (obj->getObs(Observable::E_HIGH_Q) -
+		  obj->getObs(Observable::E_LOW_Q));      
+      } else {
+	DeltaE = cfg.emax - MQ;
+      }
+      DVLOG(2) << "dE_q1 = " << DeltaE << " GeV";
+      p *= DeltaE;
+
+      // PSVar::E_q2
+      pos = map_to_part.find(PSPart::q2)->second;
+      if( perm[ pos ]>=0 ){
+	obj = obs_jets[ perm[pos] ];
+	DeltaE = (obj->getObs(Observable::E_HIGH_Q) -
+		  obj->getObs(Observable::E_LOW_Q));      
+      } else {
+	DeltaE = cfg.emax - MQ;
+      }
+      DVLOG(2) << "dE_q2 = " << DeltaE << " GeV" << endl;
+      p *= DeltaE;
+
+      // PSVar::E_b
+      pos = map_to_part.find(PSPart::b)->second;
+      if( perm[ pos ]>=0 ){
+	obj = obs_jets[ perm[pos] ];
+	DeltaE = (obj->getObs(Observable::E_HIGH_B) -
+		  obj->getObs(Observable::E_LOW_B));     
+      } else {
+	DeltaE = cfg.emax - MB;
+      }
+      DVLOG(2) << "dE_b = " << DeltaE << " GeV" << endl;
+      p *= DeltaE;
+
+      // PSVar::E_bbar
+      if( hypo==Hypothesis::TTBB ){
+	pos = map_to_part.find(PSPart::bbar)->second;
+	if( perm[ pos ]>=0 ){
+	  obj = obs_jets[ perm[pos] ];
+	  DeltaE = (obj->getObs(Observable::E_HIGH_B) -
+		    obj->getObs(Observable::E_LOW_B));
+	} else {
+	  DeltaE = cfg.emax - MB;
+	}
+	DVLOG(2) << "dE_bbar = " << DeltaE << " GeV" << endl;
+	p *= DeltaE;
+      }
+      break;
 
     default:
       break;
@@ -2009,8 +2097,9 @@ int MEM::Integrand::create_PS_LL(MEM::PS &ps, const double *x,
     dir.SetTheta(TMath::ACos(x[map_to_var.find(PSVar::cos_b)->second]));
     dir.SetPhi(x[map_to_var.find(PSVar::phi_b)->second]);
     E_LOW = MB;
-    E_HIGH = TMath::Min(cfg.emax,
-                        2 * MEM::TF_ACC_param[1] / TMath::Sin(dir.Theta()));
+    //E_HIGH = TMath::Min(cfg.emax,
+    //                    2 * MEM::TF_ACC_param[1] / TMath::Sin(dir.Theta()));
+    E_HIGH  = cfg.emax;
     tftype = (perm[nj_b] == -1 ? TFType::bLost : TFType::Unknown);
   }
   E = E_LOW + (E_HIGH - E_LOW) * (x[map_to_var.find(PSVar::E_b)->second]);
@@ -2029,8 +2118,9 @@ int MEM::Integrand::create_PS_LL(MEM::PS &ps, const double *x,
     dir.SetTheta(TMath::ACos(x[map_to_var.find(PSVar::cos_bbar)->second]));
     dir.SetPhi(x[map_to_var.find(PSVar::phi_bbar)->second]);
     E_LOW = MB;
-    E_HIGH = TMath::Min(cfg.emax,
-                        2 * MEM::TF_ACC_param[1] / TMath::Sin(dir.Theta()));
+    //E_HIGH = TMath::Min(cfg.emax,
+    //                    2 * MEM::TF_ACC_param[1] / TMath::Sin(dir.Theta()));
+    E_HIGH  = cfg.emax;
     tftype = (perm[nj_bbar] == -1 ? TFType::bLost : TFType::Unknown);
   }
   E = hypo == Hypothesis::TTBB
@@ -2088,8 +2178,9 @@ int MEM::Integrand::create_PS_HH(MEM::PS &ps, const double *x,
     dir.SetTheta(TMath::ACos(x[map_to_var.find(PSVar::cos_q1)->second]));
     dir.SetPhi(x[map_to_var.find(PSVar::phi_q1)->second]);
     E_LOW = MQ;
-    E_HIGH = TMath::Min(cfg.emax,
-                        2 * MEM::TF_ACC_param[1] / TMath::Sin(dir.Theta()));
+    //E_HIGH = TMath::Min(cfg.emax,
+    //                    2 * MEM::TF_ACC_param[1] / TMath::Sin(dir.Theta()));
+    E_HIGH  = cfg.emax;
     tftype = (perm[nj_q1] == -1 ? TFType::qLost : TFType::Unknown);
   }
   E = E_LOW + (E_HIGH - E_LOW) * (x[map_to_var.find(PSVar::E_q1)->second]);
@@ -2136,8 +2227,9 @@ int MEM::Integrand::create_PS_HH(MEM::PS &ps, const double *x,
     dir.SetTheta(TMath::ACos(x[map_to_var.find(PSVar::cos_q2)->second]));
     dir.SetPhi(x[map_to_var.find(PSVar::phi_q2)->second]);
     E_LOW = MQ;
-    E_HIGH = TMath::Min(cfg.emax,
-                        2 * MEM::TF_ACC_param[1] / TMath::Sin(dir.Theta()));
+    //E_HIGH = TMath::Min(cfg.emax,
+    //                    2 * MEM::TF_ACC_param[1] / TMath::Sin(dir.Theta()));
+    E_HIGH  = cfg.emax;
     tftype = (perm[nj_q2] == -1 ? TFType::qLost : TFType::Unknown);
   }
   E = E_LOW + (E_HIGH - E_LOW) * (x[map_to_var.find(PSVar::E_q2)->second]);
@@ -2184,8 +2276,9 @@ int MEM::Integrand::create_PS_HH(MEM::PS &ps, const double *x,
     dir.SetTheta(TMath::ACos(x[map_to_var.find(PSVar::cos_b)->second]));
     dir.SetPhi(x[map_to_var.find(PSVar::phi_b)->second]);
     E_LOW = MB;
-    E_HIGH = TMath::Min(cfg.emax,
-                        2 * MEM::TF_ACC_param[1] / TMath::Sin(dir.Theta()));
+    //E_HIGH = TMath::Min(cfg.emax,
+    //                    2 * MEM::TF_ACC_param[1] / TMath::Sin(dir.Theta()));
+    E_HIGH  = cfg.emax;
     tftype = (perm[nj_b] == -1 ? TFType::bLost : TFType::Unknown);
   }
   E = E_LOW + (E_HIGH - E_LOW) * (x[map_to_var.find(PSVar::E_b)->second]);
@@ -2204,8 +2297,9 @@ int MEM::Integrand::create_PS_HH(MEM::PS &ps, const double *x,
     dir.SetTheta(TMath::ACos(x[map_to_var.find(PSVar::cos_bbar)->second]));
     dir.SetPhi(x[map_to_var.find(PSVar::phi_bbar)->second]);
     E_LOW = MB;
-    E_HIGH = TMath::Min(cfg.emax,
-                        2 * MEM::TF_ACC_param[1] / TMath::Sin(dir.Theta()));
+    //E_HIGH = TMath::Min(cfg.emax,
+    //                    2 * MEM::TF_ACC_param[1] / TMath::Sin(dir.Theta()));
+    E_HIGH  = cfg.emax;
     tftype = (perm[nj_bbar] == -1 ? TFType::bLost : TFType::Unknown);
   }
   E = hypo == Hypothesis::TTBB

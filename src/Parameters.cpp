@@ -612,7 +612,7 @@ void MEM::Object::print(ostream& os) const {
   }
 }
 
-MEM::MEMConfig::MEMConfig(int nmc, double ab, double re, int ic, int pi,
+MEM::MEMConfig::MEMConfig(int nmc, double ab, double re, int ts, int ic, int pi,
                           double s, double e, std::string pdf, double jCL,
                           double bCL, double mCL, int tfsupp, double tfoff,
                           bool tfrange, int hpf, MEM::TFMethod::TFMethod method,
@@ -621,6 +621,7 @@ MEM::MEMConfig::MEMConfig(int nmc, double ab, double re, int ic, int pi,
   n_max_calls = nmc;
   abs = ab;
   rel = re;
+  two_stage = ts;
   int_code = ic;
   perm_int = pi;
   sqrts = s;

@@ -1811,9 +1811,10 @@ int MEM::Integrand::create_PS_LH(MEM::PS &ps, const double *x,
     dir.SetTheta(TMath::ACos(x[map_to_var.find(PSVar::cos_q1)->second]));
     dir.SetPhi(x[map_to_var.find(PSVar::phi_q1)->second]);
     E_LOW = MQ;
-    E_HIGH = TMath::Min(
-        cfg.emax, 2 * MEM::TF_ACC_param[1] /
-                      TMath::Sin(dir.Theta()));  // Restrict to 2*E threshol
+    //E_HIGH = TMath::Min(
+    //    cfg.emax, 2 * MEM::TF_ACC_param[1] /
+    //                  TMath::Sin(dir.Theta()));  // Restrict to 2*E threshol
+    E_HIGH = cfg.emax;
     tftype = (perm[nj_q1] == -1 ? TFType::qLost : TFType::Unknown);
   }
   E = E_LOW + (E_HIGH - E_LOW) * (x[map_to_var.find(PSVar::E_q1)->second]);
@@ -1896,8 +1897,9 @@ int MEM::Integrand::create_PS_LH(MEM::PS &ps, const double *x,
     dir.SetTheta(TMath::ACos(x[map_to_var.find(PSVar::cos_b)->second]));
     dir.SetPhi(x[map_to_var.find(PSVar::phi_b)->second]);
     E_LOW = MB;
-    E_HIGH = TMath::Min(cfg.emax,
-                        2 * MEM::TF_ACC_param[1] / TMath::Sin(dir.Theta()));
+    //E_HIGH = TMath::Min(cfg.emax,
+    //                    2 * MEM::TF_ACC_param[1] / TMath::Sin(dir.Theta()));
+    E_HIGH = cfg.emax;
     tftype = (perm[nj_b] == -1 ? TFType::bLost : TFType::Unknown);
   }
   E = E_LOW + (E_HIGH - E_LOW) * (x[map_to_var.find(PSVar::E_b)->second]);
@@ -1916,8 +1918,9 @@ int MEM::Integrand::create_PS_LH(MEM::PS &ps, const double *x,
     dir.SetTheta(TMath::ACos(x[map_to_var.find(PSVar::cos_bbar)->second]));
     dir.SetPhi(x[map_to_var.find(PSVar::phi_bbar)->second]);
     E_LOW = MB;
-    E_HIGH = TMath::Min(cfg.emax,
-                        2 * MEM::TF_ACC_param[1] / TMath::Sin(dir.Theta()));
+    //E_HIGH = TMath::Min(cfg.emax,
+    //                    2 * MEM::TF_ACC_param[1] / TMath::Sin(dir.Theta()));
+    E_HIGH = cfg.emax;
     tftype = (perm[nj_bbar] == -1 ? TFType::bLost : TFType::Unknown);
   }
   E = hypo == Hypothesis::TTBB
@@ -2099,7 +2102,7 @@ int MEM::Integrand::create_PS_LL(MEM::PS &ps, const double *x,
     E_LOW = MB;
     //E_HIGH = TMath::Min(cfg.emax,
     //                    2 * MEM::TF_ACC_param[1] / TMath::Sin(dir.Theta()));
-    E_HIGH  = cfg.emax;
+    E_HIGH = cfg.emax;
     tftype = (perm[nj_b] == -1 ? TFType::bLost : TFType::Unknown);
   }
   E = E_LOW + (E_HIGH - E_LOW) * (x[map_to_var.find(PSVar::E_b)->second]);
@@ -2120,7 +2123,7 @@ int MEM::Integrand::create_PS_LL(MEM::PS &ps, const double *x,
     E_LOW = MB;
     //E_HIGH = TMath::Min(cfg.emax,
     //                    2 * MEM::TF_ACC_param[1] / TMath::Sin(dir.Theta()));
-    E_HIGH  = cfg.emax;
+    E_HIGH = cfg.emax;
     tftype = (perm[nj_bbar] == -1 ? TFType::bLost : TFType::Unknown);
   }
   E = hypo == Hypothesis::TTBB
@@ -2180,7 +2183,7 @@ int MEM::Integrand::create_PS_HH(MEM::PS &ps, const double *x,
     E_LOW = MQ;
     //E_HIGH = TMath::Min(cfg.emax,
     //                    2 * MEM::TF_ACC_param[1] / TMath::Sin(dir.Theta()));
-    E_HIGH  = cfg.emax;
+    E_HIGH = cfg.emax;
     tftype = (perm[nj_q1] == -1 ? TFType::qLost : TFType::Unknown);
   }
   E = E_LOW + (E_HIGH - E_LOW) * (x[map_to_var.find(PSVar::E_q1)->second]);
@@ -2229,7 +2232,7 @@ int MEM::Integrand::create_PS_HH(MEM::PS &ps, const double *x,
     E_LOW = MQ;
     //E_HIGH = TMath::Min(cfg.emax,
     //                    2 * MEM::TF_ACC_param[1] / TMath::Sin(dir.Theta()));
-    E_HIGH  = cfg.emax;
+    E_HIGH = cfg.emax;
     tftype = (perm[nj_q2] == -1 ? TFType::qLost : TFType::Unknown);
   }
   E = E_LOW + (E_HIGH - E_LOW) * (x[map_to_var.find(PSVar::E_q2)->second]);
@@ -2278,7 +2281,7 @@ int MEM::Integrand::create_PS_HH(MEM::PS &ps, const double *x,
     E_LOW = MB;
     //E_HIGH = TMath::Min(cfg.emax,
     //                    2 * MEM::TF_ACC_param[1] / TMath::Sin(dir.Theta()));
-    E_HIGH  = cfg.emax;
+    E_HIGH = cfg.emax;
     tftype = (perm[nj_b] == -1 ? TFType::bLost : TFType::Unknown);
   }
   E = E_LOW + (E_HIGH - E_LOW) * (x[map_to_var.find(PSVar::E_b)->second]);
@@ -2299,7 +2302,7 @@ int MEM::Integrand::create_PS_HH(MEM::PS &ps, const double *x,
     E_LOW = MB;
     //E_HIGH = TMath::Min(cfg.emax,
     //                    2 * MEM::TF_ACC_param[1] / TMath::Sin(dir.Theta()));
-    E_HIGH  = cfg.emax;
+    E_HIGH = cfg.emax;
     tftype = (perm[nj_bbar] == -1 ? TFType::bLost : TFType::Unknown);
   }
   E = hypo == Hypothesis::TTBB

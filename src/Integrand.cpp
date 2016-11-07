@@ -633,6 +633,10 @@ MEM::MEMOutput MEM::Integrand::run(const MEM::FinalState::FinalState f,
   // prepare permutation, count variables
   init(f, h);
 
+  // clock for init timing - DS temp
+  auto t01 = high_resolution_clock::now();
+  cout << "init took " << duration_cast<milliseconds>(t01-t0).count()*0.001 << " seconds" << endl;
+
   std::vector<PSVar::PSVar> list;
   for (auto it : missed) list.push_back(it);  // quarks out-of-acceptance
   for (auto it : any)
@@ -825,6 +829,9 @@ void MEM::Integrand::make_assumption(
   double err2{0.};
   double chi2{0.};
 
+  // clock for timing - DS temp
+  auto t02 = high_resolution_clock::now();
+
   std::vector<PSVar::PSVar> lost;
   for (auto it : missed) lost.push_back(it);
   for (auto it : any) lost.push_back(it);
@@ -846,45 +853,98 @@ void MEM::Integrand::make_assumption(
   //    CASE (2) ==> perm does not contain -1: then set the correct index to -1
   LOG(DEBUG) << "filtering permutations with cfg.perm_pruning="
              << vec_to_string(cfg.perm_pruning);
-  for (std::size_t n_perm = 0; n_perm < n_perm_max; ++n_perm) {
-    auto perm = get_permutation(n_perm);
-    if (perm.size() == 0) continue;
-    DVLOG(3) << "considering permutation " << vec_to_string(perm);
+  if(fs != FinalState::HH){ //DS
+    for (std::size_t n_perm = 0; n_perm < n_perm_max; ++n_perm) {
+      auto perm = get_permutation(n_perm);
+      if (perm.size() == 0) continue;
+      DVLOG(3) << "considering permutation " << vec_to_string(perm);
 
-    // - *it gives the integ. var. position in PSVar
-    // - provide first cosTheta: then *it-1 gives the position of E
-    // - (*it-1) / 3 gives particle position (0=q1,1=qbar1,2=b1,...)
+      // - *it gives the integ. var. position in PSVar
+      // - provide first cosTheta: then *it-1 gives the position of E
+      // - (*it-1) / 3 gives particle position (0=q1,1=qbar1,2=b1,...)
+      size_t count{0};
+      for (auto it = missed.begin(); it != missed.end(); ++count, ++it) {
+	size_t lost_particle = (static_cast<size_t>(*it) - 1) / 3;
+	if (count % 2 == 0)
+	  perm[map_to_part[static_cast<PSPart::PSPart>(lost_particle)]] = -1;
+      }
+      for (auto it = any.begin(); it != any.end(); ++count, ++it) {
+	size_t lost_particle = (static_cast<size_t>(*it) - 1) / 3;
+	if (count % 2 == 0)
+	  perm[map_to_part[static_cast<PSPart::PSPart>(lost_particle)]] = -2;
+      }
+
+      // count the number of lost quarks as assumed in perm
+      // if it turns out to be equal to the assumed (lost.size()/2),
+      // then push back the permutation
+      count = 0;
+      for (auto ind : perm) {
+	if (ind < 0) ++count;
+      }
+
+      if (count != (lost.size() / 2)) continue;
+      if (!accept_perm(perm, cfg.perm_pruning)) continue;
+
+      perm_indexes_assumption.push_back(perm);
+
+      // for (auto i: perm){ //DS temp
+      // 	std::cout << i << ' ';
+      // }
+      // cout << endl; //DS tem
+
+      // Question: what is going on here?
+      std::map<PermConstants::PermConstants, double> cperm =
+        get_permutation_constants(perm);
+      perm_const_assumption.push_back(
+				      cperm.at(PermConstants::PermConstants::VarTransf));
+    }  // loop over permutations
+  }
+  else{
+    // hardcode permutations //DS
+    vector<int> indexesb, indexesq; 
+    for(auto ind: perm_index){
+      if(ind >= 0){
+	MEM::Object *obj = obs_jets[ind];
+	const auto BTAG_isSet = obj->isSet(Observable::BTAG);
+	const auto BTAG_val = obj->getObs(Observable::BTAG);
+	if (BTAG_isSet && BTAG_val < 0.5) indexesq.push_back(ind);
+	if (BTAG_isSet && BTAG_val > 0.5) indexesb.push_back(ind);	
+      }
+    }
+    vector<size_t> lost_idx;
     size_t count{0};
     for (auto it = missed.begin(); it != missed.end(); ++count, ++it) {
       size_t lost_particle = (static_cast<size_t>(*it) - 1) / 3;
       if (count % 2 == 0)
-        perm[map_to_part[static_cast<PSPart::PSPart>(lost_particle)]] = -1;
+	lost_idx.push_back(lost_particle);
     }
     for (auto it = any.begin(); it != any.end(); ++count, ++it) {
       size_t lost_particle = (static_cast<size_t>(*it) - 1) / 3;
       if (count % 2 == 0)
-        perm[map_to_part[static_cast<PSPart::PSPart>(lost_particle)]] = -2;
+	lost_idx.push_back(lost_particle);
     }
+    size_t nb = indexesb.size();
+    size_t nq = indexesq.size(); 
+    size_t nlost = (missed.size() + any.size()) / 2;
 
-    // count the number of lost quarks as assumed in perm
-    // if it turns out to be equal to the assumed (lost.size()/2),
-    // then push back the permutation
-    count = 0;
-    for (auto ind : perm) {
-      if (ind < 0) ++count;
+    if(nlost != lost_idx.size()) cout << "lost mismatch!" << endl;
+
+    vector<vector<int>> perms = get_permutations(nb, nq, lost_idx);
+
+    for(auto comb : perms){
+      perm_indexes_assumption.push_back(comb);
+
+      // Save the (non-integrated) probability of this permutation
+      std::map<PermConstants::PermConstants, double> cperm =
+	get_permutation_constants(comb);
+      perm_const_assumption.push_back(
+	  cperm.at(PermConstants::PermConstants::VarTransf));
     }
+  }
 
-    if (count != (lost.size() / 2)) continue;
-    if (!accept_perm(perm, cfg.perm_pruning)) continue;
-
-    perm_indexes_assumption.push_back(perm);
-
-    // Question: what is going on here?
-    std::map<PermConstants::PermConstants, double> cperm =
-        get_permutation_constants(perm);
-    perm_const_assumption.push_back(
-        cperm.at(PermConstants::PermConstants::VarTransf));
-  }  // loop over permutations
+  // clock for permutation timing - DS temp
+  auto t03 = high_resolution_clock::now();
+  cout << "perm filtering took " << duration_cast<milliseconds>(t03-t02).count()*0.001 << " seconds" << endl;
 
   LOG(DEBUG) << "done filtering permutations";
 
@@ -922,6 +982,10 @@ void MEM::Integrand::make_assumption(
 
   LOG(DEBUG) << "Marginalising...";
   do_integration(npar, xL, xU, prob, err2, chi2);
+
+  // clock for integration timing - DS temp
+  auto t04 = high_resolution_clock::now();
+  cout << "integration took " << duration_cast<milliseconds>(t04-t03).count()*0.001 << " seconds" << endl;
 
   //
   //  if (cfg.do_minimize) {
@@ -1040,8 +1104,9 @@ void MEM::Integrand::do_integration(unsigned int npar, double *xL, double *xU,
 	p = ig2->Integral(xL, xU);
 	p_err = TMath::Power(ig2->Error(), 2.);
 	c2 = ig2->ChiSqr();
-      
-	if(n_calls > 5*n_max_calls) break;
+	
+	//5* => max 4 2nd stage it.s, 13* => max 10 it.s
+	if(n_calls > int(4.0*(cfg.niters-0.5)/3+1)*n_max_calls) break;
       }
     }
 

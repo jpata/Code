@@ -1,0 +1,55 @@
+ppjjj dddxdxg 1 EW=0,0 QCD=3,1 CKMORDER=0 MODEL=sm Type=lt nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppjjj bbbxbxg condmap=dddxdxg MB=0
+ppjjj uuuxuxg map=dddxdxg
+ppjjj uuxddxg 1 EW=0,0 QCD=3,1 CKMORDER=0 MODEL=sm Type=lt nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppjjj ddxbbxg condmap=uuxddxg MB=0
+ppjjj ddxssxg map=uuxddxg
+ppjjj uuxccxg map=uuxddxg
+ppjjj ccxddxg map=uuxddxg
+ppjjj ddxggg 1 EW=0,0 QCD=3,1 CKMORDER=0 MODEL=sm Type=lt nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppjjj bbxggg condmap=ddxggg MB=0
+ppjjj uuxggg map=ddxggg
+ppjjj ggggg 1 EW=0,0 QCD=3,1 CKMORDER=0 MODEL=sm Type=lt nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppjjj bbbxbxg 1 EW=0,0 QCD=3,1 CKMORDER=0 MODEL=sm Type=lt nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppjjj ddxbbxg 1 EW=0,0 QCD=3,1 CKMORDER=0 MODEL=sm Type=lt nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppjjj uuxbbxg map=ddxbbxg
+ppjjj bbxggg 1 EW=0,0 QCD=3,1 CKMORDER=0 MODEL=sm Type=lt nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppjjj gggggg 1 EW=0,0 QCD=4,0 CKMORDER=0 MODEL=sm Type=t nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppjjj ddxgggg 1 EW=0,0 QCD=4,0 CKMORDER=0 MODEL=sm Type=t nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppjjj uuxgggg map=ddxgggg
+ppjjj bbxgggg condmap=ddxgggg MB=0
+ppjjj bbxgggg 1 EW=0,0 QCD=4,0 CKMORDER=0 MODEL=sm Type=t nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppjjj dddxdxgg 1 EW=0,0 QCD=4,0 CKMORDER=0 MODEL=sm Type=t nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppjjj bbbxbxgg condmap=dddxdxgg MB=0
+ppjjj uuuxuxgg map=dddxdxgg
+ppjjj uuxddxgg 1 EW=0,0 QCD=4,0 CKMORDER=0 MODEL=sm Type=t nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppjjj ddxbbxgg condmap=uuxddxgg MB=0
+ppjjj ddxssxgg map=uuxddxgg
+ppjjj uuxccxgg map=uuxddxgg
+ppjjj ccxddxgg map=uuxddxgg
+ppjjj bbbxbxgg 1 EW=0,0 QCD=4,0 CKMORDER=0 MODEL=sm Type=t nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppjjj ddxbbxgg 1 EW=0,0 QCD=4,0 CKMORDER=0 MODEL=sm Type=t nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppjjj uuxbbxgg map=ddxbbxgg
+ppjjj ddddxdxdx 1 EW=0,0 QCD=4,0 CKMORDER=0 MODEL=sm Type=t nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppjjj bbbbxbxbx condmap=ddddxdxdx MB=0
+ppjjj uuuuxuxux map=ddddxdxdx
+ppjjj uuuxuxddx 1 EW=0,0 QCD=4,0 CKMORDER=0 MODEL=sm Type=t nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppjjj uuuxuxbbx condmap=uuuxuxddx MB=0
+ppjjj uuxbbbxbx condmap=uuuxuxddx[5,6,1,2,3,4] MB=0
+ppjjj uuxdddxdx map=uuuxuxddx[5,6,1,2,3,4]
+ppjjj dddxdxssx map=uuuxuxddx
+ppjjj ccxdddxdx map=uuuxuxddx[5,6,1,2,3,4]
+ppjjj cccxcxddx map=uuuxuxddx
+ppjjj uuuxuxccx map=uuuxuxddx
+ppjjj uuxddxssx 1 EW=0,0 QCD=4,0 CKMORDER=0 MODEL=sm Type=t nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppjjj uuxddxbbx condmap=uuxddxssx MB=0
+ppjjj uuxccxddx map=uuxddxssx
+ppjjj bbbbxbxbx 1 EW=0,0 QCD=4,0 CKMORDER=0 MODEL=sm Type=t nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppjjj uuuxuxbbx 1 EW=0,0 QCD=4,0 CKMORDER=0 MODEL=sm Type=t nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppjjj dddxdxbbx map=uuuxuxbbx
+ppjjj uuxbbbxbx 1 EW=0,0 QCD=4,0 CKMORDER=0 MODEL=sm Type=t nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppjjj ddxbbbxbx map=uuxbbbxbx
+ppjjj uuxddxbbx 1 EW=0,0 QCD=4,0 CKMORDER=0 MODEL=sm Type=t nc=3 nf=6 MU=0 MD=0 MS=0 MC=0 LeadingColour=0
+ppjjj uuxccxbbx map=uuxddxbbx
+ppjjj ddxssxbbx map=uuxddxbbx
+ppjjj ccxddxbbx map=uuxddxbbx

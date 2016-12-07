@@ -558,6 +558,9 @@ struct MEMConfig {
   double abs;
   int integrator_type;
 
+  //0 - integrate on master, 1 - single child, n>1 - multiple cores via fork
+  int cuba_cores;
+
   // what to include into the integrand
   int int_code;
 

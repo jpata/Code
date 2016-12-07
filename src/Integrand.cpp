@@ -77,6 +77,9 @@ MEM::Integrand::Integrand(int debug, const MEMConfig &config)
   processes[Process::TTBBj] =
       ol_register_process("21 21 -> 6 -6 5 -5 21", 1);  // ttbbg
 
+  //configure cuba
+  cubacores(cfg.cuba_cores, 10000);
+
   el::Configurations defaultConf;
   defaultConf.setToDefault();
   defaultConf.set(el::Level::Info, el::ConfigurationType::Format,

@@ -55,7 +55,8 @@ int main(){
   );
   cfg.perm_int = 0;
   cfg.integrator_type = MEM::IntegratorType::Vegas;
-  
+  //cfg.cuba_cores = 10;
+
   //Transfer functions for jet reconstruction efficiency
   cfg.set_tf_global(TFType::bLost, 0, getTransferFunction(tffile, "beff", 0.0));
   cfg.set_tf_global(TFType::bLost, 1, getTransferFunction(tffile, "beff", 2.0));

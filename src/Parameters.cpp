@@ -651,6 +651,7 @@ MEM::MEMConfig::MEMConfig(int nmc, double ab, double re, int ic, int pi,
   save_permutations = false;
   
   integrator_type = IntegratorType::IntegratorType::Vegas_GSL;
+  cuba_cores = 0;
 }
 
 void MEM::MEMConfig::defaultCfg(float nCallsMultiplier) {

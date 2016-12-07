@@ -11,7 +11,7 @@
 using namespace std;
 using namespace MEM;
 
-const auto npoints = 1000;
+const auto npoints = 10000;
 
 // Returns the transfer function corresponding to a jet flavour and eta
 TF1* getTransferFunction(TFile* tffile, const char* flavour, double eta) {
@@ -54,14 +54,7 @@ int main(){
   cfg.set_tf_global(TFType::qLost, 1, getTransferFunction(tffile, "leff", 2.0));
 
   //Create the mem integrator, once per job
-  Integrand* integrand = new Integrand( 
-    DebugVerbosity::output
-//    |DebugVerbosity::init
-//    |DebugVerbosity::input
-//    |DebugVerbosity::init_more
-//    |DebugVerbosity::integration				        
-    ,cfg
-  );
+  Integrand* integrand = new Integrand(0,cfg);
   
   //Add some objects to the MEM
   TLorentzVector lv_j1;

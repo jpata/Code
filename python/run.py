@@ -16,6 +16,7 @@ CvectorPSVar = getattr(ROOT, "std::vector<MEM::PSVar::PSVar>")
 import ConfigParser
 
 INTEGRATION_VARIABLES = {
+    "dl_0w2h2t": [],
     "sl_2w2h2t": [],
     "sl_1w2h2t": [
         ROOT.MEM.PSVar.cos_q1, ROOT.MEM.PSVar.phi_q1

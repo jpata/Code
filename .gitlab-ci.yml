@@ -43,3 +43,31 @@ integrator:
     paths:
       - integrator.txt
     name: "${CI_BUILD_NAME}_${CI_BUILD_REF_NAME}"
+
+test0:
+  stage: test
+  script:
+    - cd $CMSSW_BASE
+    - tar -xzf $CI_HOME/cmssw.tgz
+    - cd src
+    - scram b python
+    - cd $CI_HOME
+    - python $CMSSW_BASE/src/TTH/MEIntegratorStandalone/python/run.py $CMSSW_BASE/src/TTH/MEIntegratorStandalone/data/test0.cfg | tee -i test0.txt
+  artifacts:
+    paths:
+      - test0.txt
+    name: "${CI_BUILD_NAME}_${CI_BUILD_REF_NAME}"
+
+test1:
+  stage: test
+  script:
+    - cd $CMSSW_BASE
+    - tar -xzf $CI_HOME/cmssw.tgz
+    - cd src
+    - scram b python
+    - cd $CI_HOME
+    - python $CMSSW_BASE/src/TTH/MEIntegratorStandalone/python/run.py $CMSSW_BASE/src/TTH/MEIntegratorStandalone/data/test1.cfg | tee -i test1.txt
+  artifacts:
+    paths:
+      - test1.txt
+    name: "${CI_BUILD_NAME}_${CI_BUILD_REF_NAME}"

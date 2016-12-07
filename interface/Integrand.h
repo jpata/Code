@@ -4,6 +4,8 @@
 // user headers
 #include "TTH/MEIntegratorStandalone/interface/Parameters.h"
 
+#include "TTH/MEIntegratorStandalone/interface/cuba.h"
+
 // Interface
 extern "C" {
 void ol_setparameter_int(const char *param, int val);
@@ -84,6 +86,9 @@ class Integrand {
 
   const TF1 *get_tf_global(TFType::TFType type, int etabin) const;
 
+  double Eval(const double *);
+
+  
   /* Used internally */
  private:
   // initialise (once for event)
@@ -129,9 +134,6 @@ class Integrand {
   // a constanta value for each permutation
   std::map<MEM::PermConstants::PermConstants, double> get_permutation_constants(
       const std::vector<int> &) const;
-
-  // main method. Needed by GSLMCIntegrator
-  double Eval(const double *);
 
   /**
   Creates a physical phase space point ps from an integrable phase space point

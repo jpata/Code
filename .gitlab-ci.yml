@@ -30,3 +30,16 @@ compile:
     name: "${CI_BUILD_NAME}_${CI_BUILD_REF_NAME}"
     expire_in: 10 minutes
 
+integrator:
+  stage: test
+  script:
+    - cd $CMSSW_BASE
+    - tar -xzf $CI_HOME/cmssw.tgz
+    - cd src
+    - scram b python
+    - cd $CI_HOME
+    - integrator | tee -i integrator.txt
+  artifacts:
+    paths:
+      - integrator.txt
+    name: "${CI_BUILD_NAME}_${CI_BUILD_REF_NAME}"

@@ -63,11 +63,7 @@ int main(){
   cfg.set_tf_global(TFType::qLost, 1, getTransferFunction(tffile, "leff", 2.0));
 
   //Create the mem integrator, once per job
-<<<<<<< HEAD
   Integrand* integrand = new Integrand(0,cfg);
-=======
-  Integrand* integrand = new Integrand(1, cfg);
->>>>>>> cc9222b... added first cuba test
   
   //Add some objects to the MEM
 //  TLorentzVector lv_j1;

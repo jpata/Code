@@ -1,7 +1,7 @@
 import sys, pickle, json, os
 
 #One cool hack to make TFClasses visible for pickle
-import TTH.MEAnalysis.TFClasses as TFClasses
+import TTH.MEIntegratorStandalone.TFClasses as TFClasses
 sys.modules["TFClasses"] = TFClasses
 
 import ROOT

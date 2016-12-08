@@ -1,6 +1,7 @@
 stages:
   - compile
-  - test
+  - test_basic
+  - test_comprehensive
 
 before_script:
   - export CI_HOME="$( pwd )"
@@ -31,7 +32,7 @@ compile:
     expire_in: 10 minutes
 
 integrator:
-  stage: test
+  stage: test_basic
   script:
     - cd $CMSSW_BASE
     - tar -xzf $CI_HOME/cmssw.tgz
@@ -42,4 +43,60 @@ integrator:
   artifacts:
     paths:
       - integrator.txt
+    name: "${CI_BUILD_NAME}_${CI_BUILD_REF_NAME}"
+
+test0:
+  stage: test_comprehensive
+  script:
+    - cd $CMSSW_BASE
+    - tar -xzf $CI_HOME/cmssw.tgz
+    - cd src
+    - scram b python
+    - cd $CI_HOME
+    - python $CMSSW_BASE/src/TTH/MEIntegratorStandalone/python/run.py $CMSSW_BASE/src/TTH/MEIntegratorStandalone/data/test0.cfg | tee -i test0.txt
+  artifacts:
+    paths:
+      - test0.txt
+    name: "${CI_BUILD_NAME}_${CI_BUILD_REF_NAME}"
+
+test1:
+  stage: test_comprehensive
+  script:
+    - cd $CMSSW_BASE
+    - tar -xzf $CI_HOME/cmssw.tgz
+    - cd src
+    - scram b python
+    - cd $CI_HOME
+    - python $CMSSW_BASE/src/TTH/MEIntegratorStandalone/python/run.py $CMSSW_BASE/src/TTH/MEIntegratorStandalone/data/test1.cfg | tee -i test1.txt
+  artifacts:
+    paths:
+      - test1.txt
+    name: "${CI_BUILD_NAME}_${CI_BUILD_REF_NAME}"
+
+test2:
+  stage: test_comprehensive
+  script:
+    - cd $CMSSW_BASE
+    - tar -xzf $CI_HOME/cmssw.tgz
+    - cd src
+    - scram b python
+    - cd $CI_HOME
+    - python $CMSSW_BASE/src/TTH/MEIntegratorStandalone/python/run.py $CMSSW_BASE/src/TTH/MEIntegratorStandalone/data/test2.cfg | tee -i test2.txt
+  artifacts:
+    paths:
+      - test2.txt
+    name: "${CI_BUILD_NAME}_${CI_BUILD_REF_NAME}"
+
+test3:
+  stage: test_comprehensive
+  script:
+    - cd $CMSSW_BASE
+    - tar -xzf $CI_HOME/cmssw.tgz
+    - cd src
+    - scram b python
+    - cd $CI_HOME
+    - python $CMSSW_BASE/src/TTH/MEIntegratorStandalone/python/run.py $CMSSW_BASE/src/TTH/MEIntegratorStandalone/data/test3.cfg | tee -i test3.txt
+  artifacts:
+    paths:
+      - test3.txt
     name: "${CI_BUILD_NAME}_${CI_BUILD_REF_NAME}"

@@ -9,6 +9,7 @@
 <use   name="boost"/>
 <use   name="lhapdf"/>
 <lib   name="openloops"/>
+<lib   name="cuba"/>
 <Flags CXXFLAGS="-I$(CMSSW_BASE)/src/TTH/MEIntegratorStandalone"/>
 <Flags GENREFLEX_ARGS="-I$(CMSSW_BASE)/src/TTH/MEIntegratorStandalone"/>
 <export>

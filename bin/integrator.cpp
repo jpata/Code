@@ -45,8 +45,18 @@ int main(){
   vector<Permutations::Permutations> pvec({Permutations::BTagged, Permutations::QUntagged, Permutations::QQbarBBbarSymmetry});
   cfg.perm_pruning = pvec;
   //cfg.int_code = cfg.int_code + MEM::IntegrandType::AdditionalRadiation;
+  cfg.int_code = (
+    MEM::IntegrandType::IntegrandType::Constant |
+    MEM::IntegrandType::IntegrandType::ScattAmpl |
+    MEM::IntegrandType::IntegrandType::DecayAmpl |
+    MEM::IntegrandType::IntegrandType::Jacobian |
+    MEM::IntegrandType::IntegrandType::PDF |
+    MEM::IntegrandType::IntegrandType::Transfer
+  );
   cfg.perm_int = 0;
-  
+  cfg.integrator_type = MEM::IntegratorType::Vegas;
+  //cfg.cuba_cores = 10;
+
   //Transfer functions for jet reconstruction efficiency
   cfg.set_tf_global(TFType::bLost, 0, getTransferFunction(tffile, "beff", 0.0));
   cfg.set_tf_global(TFType::bLost, 1, getTransferFunction(tffile, "beff", 2.0));
@@ -57,20 +67,17 @@ int main(){
   Integrand* integrand = new Integrand(0,cfg);
   
   //Add some objects to the MEM
-  TLorentzVector lv_j1;
-  lv_j1.SetPtEtaPhiM(158.72032165527344, -2.042543649673462, 1.3954641819000244, 10.526216506958008);
-  Object j1( lv_j1, ObjectType::Jet );
-  j1.addObs( Observable::BTAG, 0. ); // 0 - jet is assumed to be from a light quark, 1 - a b quark
-  //j1.addObs( Observable::PDGID, 1 );  // currently not used
-  // attach the transfer functions corresponding to the jet
-  j1.addTransferFunction(TFType::bReco, getTransferFunction(tffile, "b", lv_j1.Eta()));
-  j1.addTransferFunction(TFType::qReco, getTransferFunction(tffile, "l", lv_j1.Eta()));
+//  TLorentzVector lv_j1;
+//  lv_j1.SetPtEtaPhiM(158.72032165527344, -2.042543649673462, 1.3954641819000244, 10.526216506958008);
+//  Object j1( lv_j1, ObjectType::Jet );
+//  j1.addObs( Observable::BTAG, 0. ); // 0 - jet is assumed to be from a light quark, 1 - a b quark
+//  j1.addTransferFunction(TFType::bReco, getTransferFunction(tffile, "b", lv_j1.Eta()));
+//  j1.addTransferFunction(TFType::qReco, getTransferFunction(tffile, "l", lv_j1.Eta()));
 
   TLorentzVector lv_j2;
   lv_j2.SetPtEtaPhiM(154.27105712890625, 0.4824397563934326, -1.7387510538101196, 13.035625457763672);
   Object j2( lv_j2, ObjectType::Jet );
   j2.addObs( Observable::BTAG, 1. );
-  //j2.addObs( Observable::PDGID, 5 );
   j2.addTransferFunction(TFType::bReco, getTransferFunction(tffile, "b", lv_j2.Eta()));
   j2.addTransferFunction(TFType::qReco, getTransferFunction(tffile, "l", lv_j2.Eta()));
 
@@ -78,7 +85,6 @@ int main(){
   lv_j3.SetPtEtaPhiM(146.58963012695312, 0.4863491654396057, -2.5873682498931885, 16.60299301147461);
   Object j3( lv_j3, ObjectType::Jet );
   j3.addObs( Observable::BTAG, 1. );
-  //j3.addObs( Observable::PDGID, 1 );
   j3.addTransferFunction(TFType::bReco, getTransferFunction(tffile, "b", lv_j3.Eta()));
   j3.addTransferFunction(TFType::qReco, getTransferFunction(tffile, "l", lv_j3.Eta()));
 
@@ -86,7 +92,6 @@ int main(){
   lv_j4.SetPtEtaPhiM(141.0120849609375, 1.432065725326538, 2.3994698524475098, 11.62883472442627);
   Object j4( lv_j4, ObjectType::Jet );
   j4.addObs( Observable::BTAG, 0. );
-  //j4.addObs( Observable::PDGID, 22 );
   j4.addTransferFunction(TFType::bReco, getTransferFunction(tffile, "b", lv_j4.Eta()));
   j4.addTransferFunction(TFType::qReco, getTransferFunction(tffile, "l", lv_j4.Eta()));
 
@@ -94,7 +99,6 @@ int main(){
   lv_j5.SetPtEtaPhiM(135.69717407226562, 0.854595422744751, 2.2066357135772705, 10.661768913269043);
   Object j5( lv_j5, ObjectType::Jet );
   j5.addObs( Observable::BTAG, 0. );
-  //j5.addObs( Observable::PDGID, 22 );
   j5.addTransferFunction(TFType::bReco, getTransferFunction(tffile, "b", lv_j5.Eta()));
   j5.addTransferFunction(TFType::qReco, getTransferFunction(tffile, "l", lv_j5.Eta()));
 
@@ -102,7 +106,6 @@ int main(){
   lv_j6.SetPtEtaPhiM(71.66462707519531, 1.1147513389587402, -2.8738958835601807, 8.748970031738281);
   Object j6( lv_j6, ObjectType::Jet );
   j6.addObs( Observable::BTAG, 1. );
-  //j6.addObs( Observable::PDGID, -5 );
   j6.addTransferFunction(TFType::bReco, getTransferFunction(tffile, "b", lv_j6.Eta()));
   j6.addTransferFunction(TFType::qReco, getTransferFunction(tffile, "l", lv_j6.Eta()));
 
@@ -110,7 +113,6 @@ int main(){
   lv_j7.SetPtEtaPhiM(41.40342330932617, 1.1593384742736816, -0.756840705871582, 4.991734504699707);
   Object j7( lv_j7, ObjectType::Jet );
   j7.addObs( Observable::BTAG, 1. );
-  //j6.addObs( Observable::PDGID, -5 );
   j7.addTransferFunction(TFType::bReco, getTransferFunction(tffile, "b", lv_j7.Eta()));
   j7.addTransferFunction(TFType::qReco, getTransferFunction(tffile, "l", lv_j7.Eta()));
 
@@ -120,8 +122,6 @@ int main(){
   lv_l1.SetPtEtaPhiM(42.008724212646484, 1.87186598777771, 0.4528217911720276, -0.042224351316690445);
   Object l1( lv_l1, ObjectType::Lepton );
   l1.addObs( Observable::CHARGE, +1. );
-  // Object l2( TLorentzVector(70,-10, -20, sqrt(70*70+10*10+20*20)), ObjectType::Lepton );
-  // l2.addObs( Observable::CHARGE, -1. );
 
   //create a MET
   TLorentzVector lv_met;
@@ -130,7 +130,7 @@ int main(){
   
   for (int i=0; i < 1; i++) {
     //add all objects to the MEM integrator
-    integrand->push_back_object( &j1 );
+    //integrand->push_back_object( &j1 );
     integrand->push_back_object( &j2 );
     integrand->push_back_object( &j3 );
     integrand->push_back_object( &j4 );
@@ -162,7 +162,7 @@ int main(){
     double mem_w = p0 / (p0 + 0.02*p1);
     cout << "mem 222 discriminator " << mem_w << endl;
 
-    //Evaluate 222 hypothesis. We do not use the information provided by the light quarks.
+    //Evaluate 022 hypothesis. We do not use the information provided by the light quarks.
     cout << "Integrating over light quarks" << endl;
     cout << "evaluating tth hypo" << endl;
     //integrate over the light quark angles

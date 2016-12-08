@@ -488,6 +488,14 @@ enum IntegrandType {
   AdditionalRadiation = 1024,
 };
 }
+  
+namespace IntegratorType {
+  enum IntegratorType {
+    Vegas_GSL = 1,
+    Vegas = 2,
+    Suave = 4,
+  };
+}
 
 struct CompPerm {
   CompPerm(int order = 0) { highpt_first = order; }
@@ -507,8 +515,8 @@ struct CompPerm {
 struct MEMConfig {
   MEMConfig(
       int = 4000,         // num of int points
-      double = 1.e-12,    // absolute tol.
-      double = 1.e-5,     // relative tol.
+      double = 0.0,    // absolute tol.
+      double = 0.01,     // relative tol.
       int = 0,            // int_code
       int = 0,            // =0 <=> Int{ Perm }; =1 <=> Perm{ Int }
       double = 13000.,    // c.o.m. energy
@@ -517,7 +525,7 @@ struct MEMConfig {
       double = 0.98,      // light quark energy CL
       double = 0.98,      // heavy quark energy CL
       double = 0.98,      // nu phi CL
-      int = 0,  // skip matrix evaluation if some TF are evaluated art chi2>...
+      int = 1,  // skip matrix evaluation if some TF are evaluated art chi2>...
       double = 6.6,  // ... ( <=> TMath::ChisquareQuantile(0.99, 1)=6.6 )
       bool =
           false,  // restrict tf to same range used for quark energy integration
@@ -548,6 +556,10 @@ struct MEMConfig {
   // the VEGAS options
   double rel;
   double abs;
+  int integrator_type;
+
+  //0 - integrate on master, 1 - single child, n>1 - multiple cores via fork
+  int cuba_cores;
 
   // what to include into the integrand
   int int_code;

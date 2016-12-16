@@ -515,8 +515,8 @@ struct MEMConfig {
       double = 13000.,    // c.o.m. energy
       double = 1000.,     // max energy for integration over momenta
       string = "cteq66",  // PDF set
-      double = 0.98,      // light quark energy CL
-      double = 0.98,      // heavy quark energy CL
+      double = 0.998,      // light quark energy CL #DS was 0.98=2.3sigm
+      double = 0.998,      // heavy quark energy CL #DS 0.9973=3sigma, 0.99994=4sigma
       double = 0.98,      // nu phi CL
       int = 0,  // skip matrix evaluation if some TF are evaluated art chi2>...
       double = 6.6,  // ... ( <=> TMath::ChisquareQuantile(0.99, 1)=6.6 )
